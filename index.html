@@ -45,19 +45,19 @@
         .modal-content {
             transition: transform 0.3s ease, opacity 0.3s ease;
         }
-        /* Scrollbar customizada para a lista de eventos */
-        #event-list::-webkit-scrollbar {
+        /* Scrollbar customizada para a lista de eventos e modal */
+        #event-list::-webkit-scrollbar, .modal-content::-webkit-scrollbar {
             width: 6px;
         }
-        #event-list::-webkit-scrollbar-track {
+        #event-list::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 10px;
         }
-        #event-list::-webkit-scrollbar-thumb {
+        #event-list::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb {
             background: #d1c4e9; /* Roxo claro */
             border-radius: 10px;
         }
-        #event-list::-webkit-scrollbar-thumb:hover {
+        #event-list::-webkit-scrollbar-thumb:hover, .modal-content::-webkit-scrollbar-thumb:hover {
             background: #b39ddb; /* Roxo um pouco mais escuro */
         }
         /* Estilo para opções desabilitadas */
@@ -110,7 +110,7 @@
 
     <!-- Modal de Eventos -->
     <div id="event-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay items-center justify-center flex hidden z-50 p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl modal-content opacity-0 transform -translate-y-5">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl modal-content opacity-0 transform -translate-y-5 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <h3 id="modal-title" class="text-xl font-bold text-gray-800"></h3>
@@ -132,16 +132,16 @@
                 <div>
                     <h4 class="font-semibold text-gray-700 mb-3">+ Adicionar Novo Agendamento</h4>
                     <form id="event-form" class="space-y-3">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div><label for="event-name" class="text-xs font-medium text-gray-600">Nome</label><input type="text" id="event-name" placeholder="Nome completo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required></div>
                             <div><label for="event-whatsapp" class="text-xs font-medium text-gray-600">WhatsApp</label><input type="text" id="event-whatsapp" placeholder="(00) 00000-0000" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div><label for="event-email" class="text-xs font-medium text-gray-600">Email</label><input type="email" id="event-email" placeholder="email@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
                             <div><label for="event-responsavel" class="text-xs font-medium text-gray-600">Email do Responsável</label><input type="email" id="event-responsavel" placeholder="responsavel@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
                         </div>
                         <div><label for="event-ministerio" class="text-xs font-medium text-gray-600">Ministério / Grupo</label><input type="text" id="event-ministerio" placeholder="Nome do ministério ou grupo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label for="event-espaco" class="text-xs font-medium text-gray-600">Espaço Desejado</label>
                                 <select id="event-espaco" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
