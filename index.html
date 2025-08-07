@@ -177,7 +177,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELO SEU) ---
+        // --- CONFIGURAÇÃO DO FIREBASE (NÃO ALTERE) ---
         const firebaseConfig = {
           apiKey: "AIzaSyBcTIht4nIFVsxL3dKE7-UwExkksIVm7Jk",
           authDomain: "agendamentocnaguasclara.firebaseapp.com",
@@ -269,32 +269,51 @@
             calendarDaysEl.appendChild(dayElWrapper);
         }
 
-        // --- LÓGICA DO MODAL E CONFLITOS ---
-        function updateAvailability() {
+        // --- LÓGICA DE HORÁRIOS (SIMPLIFICADA) ---
+        function updateHorarioOptions() {
             const selectedSpace = espacoSelect.value;
-            const dayEvents = allEvents.filter(event => event.date === selectedDate);
+
+            // 1. Redefine todas as opções para o estado padrão (habilitado)
+            for (const option of horarioSelect.options) {
+                if (option.value) { // Ignora o placeholder
+                    option.disabled = false;
+                }
+            }
+
+            // 2. Se nenhum espaço estiver selecionado, limpa a seleção de horário e termina
+            if (!selectedSpace) {
+                horarioSelect.value = '';
+                return;
+            }
+
+            // 3. Desabilita os horários já reservados para o espaço selecionado
+            const dayEventsForSpace = allEvents.filter(event =>
+                event.date === selectedDate && event.espaco === selectedSpace
+            );
+            const bookedHorarios = dayEventsForSpace.map(event => event.horario);
 
             for (const option of horarioSelect.options) {
-                if (!option.value) continue;
-                
-                let isBooked = false;
-                if (selectedSpace) {
-                    isBooked = dayEvents.some(event => event.espaco === selectedSpace && event.horario === option.value);
+                if (bookedHorarios.includes(option.value)) {
+                    option.disabled = true;
                 }
-                
-                option.disabled = isBooked;
-                option.textContent = isBooked ? `${option.value} (Indisponível)` : option.value;
+            }
+
+            // 4. Se o horário que estava selecionado ficou indisponível, limpa a seleção
+            if (horarioSelect.options[horarioSelect.selectedIndex]?.disabled) {
+                horarioSelect.value = '';
             }
         }
 
+        // --- LÓGICA DO MODAL ---
         function openModal(dateString) {
+            eventForm.reset(); // GARANTE que o formulário esteja limpo ao abrir
             selectedDate = dateString;
             const date = new Date(dateString + 'T00:00:00');
             modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
             
             const dayEvents = allEvents.filter(event => event.date === selectedDate);
             updateEventList(dayEvents);
-            updateAvailability();
+            updateHorarioOptions(); // ATUALIZA os horários com o formulário já limpo
             
             eventModal.classList.remove('hidden');
             setTimeout(() => {
@@ -317,13 +336,14 @@
             if(dayEvents.length === 0) {
                 eventListEl.innerHTML = '<div class="text-center text-sm text-gray-500 p-4">Nenhum evento agendado para esta data.</div>';
             } else {
-                dayEvents.sort((a, b) => a.horario.localeCompare(b.horario)).forEach(event => {
+                dayEvents.sort((a, b) => (a.horario || "").localeCompare(b.horario || "")).forEach(event => {
                     const eventItem = document.createElement('div');
                     eventItem.className = 'flex justify-between items-start bg-white p-3 rounded-lg border';
+                    const timeDisplay = event.horario || 'Horário não definido';
                     eventItem.innerHTML = `
                         <div>
                             <p class="font-semibold text-sm text-gray-800">${event.nome}</p>
-                            <p class="text-xs text-gray-500">${event.horario} - ${event.espaco}</p>
+                            <p class="text-xs text-gray-500">${timeDisplay} - ${event.espaco}</p>
                         </div>
                     `;
                     const deleteBtn = document.createElement('button');
@@ -337,7 +357,7 @@
         }
 
         // --- LÓGICA DO FIREBASE E WEBHOOK ---
-        const eventsCollectionPath = `/agendamentos`; // Caminho simplificado para a base de dados
+        const eventsCollectionPath = `/agendamentos`;
         const eventsCollection = collection(db, eventsCollectionPath);
 
         async function saveEventToDb(e) {
@@ -366,12 +386,15 @@
                 return; 
             }
             
-            const dayEvents = allEvents.filter(event => event.date === selectedDate);
-            const hasConflict = dayEvents.some(event => event.espaco === fullEventData.espaco && event.horario === fullEventData.horario);
+            const hasConflict = allEvents.some(event => 
+                event.date === fullEventData.date &&
+                event.espaco === fullEventData.espaco &&
+                event.horario === fullEventData.horario
+            );
             
             if (hasConflict) {
-                alert("Conflito de agendamento! Este espaço já foi reservado neste horário. Por favor, selecione outra combinação.");
-                updateAvailability();
+                alert("Conflito de agendamento! Este espaço já foi reservado neste horário. A lista será atualizada.");
+                updateHorarioOptions();
                 return;
             }
 
@@ -440,7 +463,7 @@
                 renderCalendar();
                 
                 if (!eventModal.classList.contains('hidden')) {
-                    updateAvailability();
+                    updateHorarioOptions();
                     updateEventList(allEvents.filter(event => event.date === selectedDate));
                 }
             });
@@ -452,7 +475,7 @@
         closeModalBtn.addEventListener('click', closeModal);
         eventForm.addEventListener('submit', saveEventToDb);
         eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeModal(); });
-        espacoSelect.addEventListener('change', updateAvailability);
+        espacoSelect.addEventListener('change', updateHorarioOptions);
 
         // --- INICIALIZAÇÃO ---
         listenToEvents();
