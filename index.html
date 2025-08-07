@@ -19,7 +19,10 @@ export default function App() {
     const [userId, setUserId] = useState(null);
     const [firebaseDb, setFirebaseDb] = useState(null);
     const [showErrorModal, setShowErrorModal] = useState(false);
+    const [showConflictModal, setShowConflictModal] = useState(false); // State for conflict modal
     const [isAILoading, setIsAILoading] = useState(false);
+    const [appId, setAppId] = useState('default-app-id');
+
 
     const [formData, setFormData] = useState({
         name: '',
@@ -34,7 +37,8 @@ export default function App() {
 
     // Initialize Firebase and Auth
     useEffect(() => {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        setAppId(currentAppId);
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -72,12 +76,13 @@ export default function App() {
         }
     }, []);
 
-    // Fetch data from Firestore
+    // Fetch data from Firestore's public collection
     useEffect(() => {
-        if (!isAuthReady || !userId || !firebaseDb) return;
+        if (!isAuthReady || !firebaseDb) return;
 
         setIsLoading(true);
-        const appointmentsCollectionRef = collection(firebaseDb, 'artifacts', __app_id, 'users', userId, 'appointments');
+        // --- CHANGED: Using public collection path for all users ---
+        const appointmentsCollectionRef = collection(firebaseDb, 'artifacts', appId, 'public', 'data', 'appointments');
 
         const unsubscribe = onSnapshot(appointmentsCollectionRef, (snapshot) => {
             const newEvents = {};
@@ -97,7 +102,7 @@ export default function App() {
         });
 
         return () => unsubscribe();
-    }, [isAuthReady, userId, firebaseDb]);
+    }, [isAuthReady, firebaseDb, appId]);
 
     // --- Calendar Logic ---
 
@@ -127,7 +132,7 @@ export default function App() {
         }));
     };
 
-    // Adds a new event to the selected day in Firestore and sends to webhook
+    // Adds a new event to the selected day in Firestore after checking for conflicts
     const handleAddEvent = async (e) => {
         e.preventDefault(); // Prevents page reload
         if (Object.values(formData).some(field => field.trim() === '')) {
@@ -136,16 +141,29 @@ export default function App() {
         }
 
         const dateKey = format(selectedDate, 'yyyy-MM-dd');
-        const newEvent = { ...formData, date: dateKey };
+
+        // --- CONFLICT CHECKING LOGIC ---
+        const existingEventsForDay = events[dateKey] || [];
+        const isConflict = existingEventsForDay.some(
+            event => event.desiredSpace === formData.desiredSpace && event.timeSlot === formData.timeSlot
+        );
+
+        if (isConflict) {
+            setShowConflictModal(true);
+            return; // Stop the function if there's a conflict
+        }
+        // --- END OF CONFLICT CHECKING ---
+
+        const newEvent = { ...formData, date: dateKey, createdBy: userId };
         
-        if (!userId || !firebaseDb) {
-            console.error("Firestore is not initialized or user is not authenticated.");
+        if (!firebaseDb) {
+            console.error("Firestore is not initialized.");
             return;
         }
 
         try {
-            // Save to Firestore
-            const docRef = doc(collection(firebaseDb, 'artifacts', __app_id, 'users', userId, 'appointments'));
+            // --- CHANGED: Save to public collection ---
+            const docRef = doc(collection(firebaseDb, 'artifacts', appId, 'public', 'data', 'appointments'));
             await setDoc(docRef, newEvent);
 
             // Send data to webhook
@@ -183,13 +201,14 @@ export default function App() {
 
     // Deletes an event from Firestore
     const handleDeleteEvent = async (eventId) => {
-        if (!userId || !firebaseDb) {
-            console.error("Firestore is not initialized or user is not authenticated.");
+        if (!firebaseDb) {
+            console.error("Firestore is not initialized.");
             return;
         }
         
         try {
-            const docRef = doc(firebaseDb, 'artifacts', __app_id, 'users', userId, 'appointments', eventId);
+            // --- CHANGED: Delete from public collection ---
+            const docRef = doc(firebaseDb, 'artifacts', appId, 'public', 'data', 'appointments', eventId);
             await deleteDoc(docRef);
         } catch (e) {
             console.error("Error deleting document: ", e);
@@ -283,7 +302,7 @@ export default function App() {
                  {/* User ID display for collaborative purposes */}
                 {userId && (
                     <div className="text-center text-sm text-gray-500 mb-4">
-                        <p>ID do Utilizador: <span className="font-mono bg-gray-200 px-2 py-1 rounded-md">{userId}</span></p>
+                        <p>Seu ID de Utilizador: <span className="font-mono bg-gray-200 px-2 py-1 rounded-md">{userId}</span></p>
                     </div>
                 )}
                 
@@ -504,6 +523,25 @@ export default function App() {
                                 className="w-full bg-red-500 text-white font-semibold py-3 px-4 rounded-xl hover:bg-red-600 transition-colors"
                             >
                                 OK
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Custom Alert Modal for scheduling conflicts */}
+                {showConflictModal && (
+                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-lg text-center relative">
+                             <div className="flex justify-center mb-4">
+                                <AlertTriangle size={48} className="text-yellow-500" />
+                            </div>
+                            <h4 className="text-xl font-bold mb-2">Conflito de Agendamento</h4>
+                            <p className="text-gray-700 mb-4">O espaço e horário selecionados já estão reservados. Por favor, escolha outro horário ou espaço.</p>
+                            <button
+                                onClick={() => setShowConflictModal(false)}
+                                className="w-full bg-yellow-500 text-white font-semibold py-3 px-4 rounded-xl hover:bg-yellow-600 transition-colors"
+                            >
+                                Entendi
                             </button>
                         </div>
                     </div>
