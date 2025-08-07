@@ -174,12 +174,20 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURAÇÃO DO FIREBASE ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELO SEU) ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyBcTIht4nIFVsxL3dKE7-UwExkksIVm7Jk",
+          authDomain: "agendamentocnaguasclara.firebaseapp.com",
+          projectId: "agendamentocnaguasclara",
+          storageBucket: "agendamentocnaguasclara.appspot.com",
+          messagingSenderId: "506893617246",
+          appId: "1:506893617246:web:9fc8533f587d4b3fe7cccf",
+          measurementId: "G-1FSG6ZZFKE"
+        };
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -187,15 +195,11 @@
         // --- AUTENTICAÇÃO ---
         let userId = null;
         try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
+            await signInAnonymously(auth);
             userId = auth.currentUser.uid;
-            document.getElementById('welcome-message').innerHTML = `<span class="font-semibold">Seu ID de usuário:</span> <span class="text-xs">${userId}</span>`;
+            document.getElementById('welcome-message').innerHTML = `<span class="font-semibold">Bem-vindo!</span> <span class="text-xs italic">(Sessão anónima)</span>`;
         } catch (error) {
-            console.error("Erro na autenticação:", error);
+            console.error("Erro na autenticação anónima:", error);
             document.getElementById('welcome-message').textContent = "Erro de autenticação. Os dados não serão salvos.";
         }
 
@@ -265,27 +269,21 @@
             calendarDaysEl.appendChild(dayElWrapper);
         }
 
-        // --- LÓGICA DO MODAL E CONFLITOS (REFEITA) ---
+        // --- LÓGICA DO MODAL E CONFLITOS ---
         function updateAvailability() {
             const selectedSpace = espacoSelect.value;
-            // Filtra eventos APENAS para o dia selecionado
             const dayEvents = allEvents.filter(event => event.date === selectedDate);
 
             for (const option of horarioSelect.options) {
-                if (!option.value) continue; // Pula o placeholder
+                if (!option.value) continue;
                 
                 let isBooked = false;
                 if (selectedSpace) {
-                    // Verifica se existe um evento para o espaço E o horário no dia selecionado
                     isBooked = dayEvents.some(event => event.espaco === selectedSpace && event.horario === option.value);
                 }
                 
                 option.disabled = isBooked;
-                if (isBooked) {
-                    option.textContent = `${option.value} (Indisponível)`;
-                } else {
-                    option.textContent = option.value;
-                }
+                option.textContent = isBooked ? `${option.value} (Indisponível)` : option.value;
             }
         }
 
@@ -294,10 +292,9 @@
             const date = new Date(dateString + 'T00:00:00');
             modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
             
-            // Passa a lista de eventos filtrada para as funções de UI
             const dayEvents = allEvents.filter(event => event.date === selectedDate);
             updateEventList(dayEvents);
-            updateAvailability(); // A função agora filtra por si só
+            updateAvailability();
             
             eventModal.classList.remove('hidden');
             setTimeout(() => {
@@ -340,7 +337,7 @@
         }
 
         // --- LÓGICA DO FIREBASE E WEBHOOK ---
-        const eventsCollectionPath = `/artifacts/${appId}/public/data/events`;
+        const eventsCollectionPath = `/agendamentos`; // Caminho simplificado para a base de dados
         const eventsCollection = collection(db, eventsCollectionPath);
 
         async function saveEventToDb(e) {
