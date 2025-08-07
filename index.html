@@ -1,552 +1,465 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, AlertTriangle, Sparkles } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-
-// Firebase imports
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
-
-// Main application component for the calendar
-export default function App() {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [events, setEvents] = useState({}); // Stores events by date: { 'YYYY-MM-DD': [{ id, name, whatsapp, ... }] }
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedDate, setSelectedDate] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isAuthReady, setIsAuthReady] = useState(false);
-    const [userId, setUserId] = useState(null);
-    const [firebaseDb, setFirebaseDb] = useState(null);
-    const [showErrorModal, setShowErrorModal] = useState(false);
-    const [showConflictModal, setShowConflictModal] = useState(false); // State for conflict modal
-    const [isAILoading, setIsAILoading] = useState(false);
-    const [appId, setAppId] = useState('default-app-id');
-
-
-    const [formData, setFormData] = useState({
-        name: '',
-        whatsapp: '',
-        email: '',
-        responsibleEmail: '',
-        ministryGroup: '',
-        desiredSpace: '',
-        notes: '',
-        timeSlot: ''
-    });
-
-    // Initialize Firebase and Auth
-    useEffect(() => {
-        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        setAppId(currentAppId);
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        if (Object.keys(firebaseConfig).length > 0) {
-            try {
-                const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                const db = getFirestore(app);
-                setFirebaseDb(db);
-
-                const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        setUserId(user.uid);
-                    } else {
-                        try {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        } catch (error) {
-                            console.error("Firebase Auth Error:", error);
-                        }
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Agendamento</title>
+    <!-- Incluindo Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluindo a fonte Inter do Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Configuração personalizada para o Tailwind CSS
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-purple': '#8A63D2',
+                        'light-purple': '#F4F1FA',
                     }
-                    setIsAuthReady(true);
-                });
-
-                return () => unsubscribe();
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-            }
-        } else {
-            console.error("Firebase config is not available. Please check the environment setup.");
-            setIsAuthReady(true);
-        }
-    }, []);
-
-    // Fetch data from Firestore's public collection
-    useEffect(() => {
-        if (!isAuthReady || !firebaseDb) return;
-
-        setIsLoading(true);
-        // --- CHANGED: Using public collection path for all users ---
-        const appointmentsCollectionRef = collection(firebaseDb, 'artifacts', appId, 'public', 'data', 'appointments');
-
-        const unsubscribe = onSnapshot(appointmentsCollectionRef, (snapshot) => {
-            const newEvents = {};
-            snapshot.forEach((doc) => {
-                const event = doc.data();
-                const dateKey = event.date;
-                if (!newEvents[dateKey]) {
-                    newEvents[dateKey] = [];
                 }
-                newEvents[dateKey].push({ ...event, id: doc.id });
-            });
-            setEvents(newEvents);
-            setIsLoading(false);
-        }, (error) => {
-            console.error("Error fetching data from Firestore:", error);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [isAuthReady, firebaseDb, appId]);
-
-    // --- Calendar Logic ---
-
-    // Get all days of the current month
-    const start = startOfMonth(currentDate);
-    const end = endOfMonth(currentDate);
-    const daysInMonth = eachDayOfInterval({ start, end });
-
-    // Calculate empty days at the start of the month
-    const firstDayIndex = getDay(start);
-    const emptyDays = Array(firstDayIndex).fill(null);
-
-    // --- Event Handling ---
-
-    // Opens the modal when a day is clicked
-    const handleDayClick = (day) => {
-        setSelectedDate(day);
-        setIsModalOpen(true);
-    };
-
-    // Updates the form data as the user types
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prevFormData => ({
-            ...prevFormData,
-            [name]: value
-        }));
-    };
-
-    // Adds a new event to the selected day in Firestore after checking for conflicts
-    const handleAddEvent = async (e) => {
-        e.preventDefault(); // Prevents page reload
-        if (Object.values(formData).some(field => field.trim() === '')) {
-            setShowErrorModal(true);
-            return;
-        }
-
-        const dateKey = format(selectedDate, 'yyyy-MM-dd');
-
-        // --- CONFLICT CHECKING LOGIC ---
-        const existingEventsForDay = events[dateKey] || [];
-        const isConflict = existingEventsForDay.some(
-            event => event.desiredSpace === formData.desiredSpace && event.timeSlot === formData.timeSlot
-        );
-
-        if (isConflict) {
-            setShowConflictModal(true);
-            return; // Stop the function if there's a conflict
-        }
-        // --- END OF CONFLICT CHECKING ---
-
-        const newEvent = { ...formData, date: dateKey, createdBy: userId };
-        
-        if (!firebaseDb) {
-            console.error("Firestore is not initialized.");
-            return;
-        }
-
-        try {
-            // --- CHANGED: Save to public collection ---
-            const docRef = doc(collection(firebaseDb, 'artifacts', appId, 'public', 'data', 'appointments'));
-            await setDoc(docRef, newEvent);
-
-            // Send data to webhook
-            const webhookUrl = 'https://eou7w4paj8nm4ch.m.pipedream.net';
-            const webhookData = {
-                nome: formData.name,
-                telefone: formData.whatsapp,
-                email: formData.email,
-                emailResponsavel: formData.responsibleEmail,
-                ministerioGrupo: formData.ministryGroup,
-                espacoDesejado: formData.desiredSpace,
-                observacoes: formData.notes,
-                horario: formData.timeSlot,
-                data: format(selectedDate, 'yyyy-MM-dd')
-            };
-
-            const webhookResponse = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(webhookData),
-            });
-
-            if (!webhookResponse.ok) {
-                console.error(`Erro ao enviar para o webhook: ${webhookResponse.statusText}`);
             }
-
-        } catch (e) {
-            console.error("Error adding document or sending webhook: ", e);
         }
-
-        handleCloseModal();
-    };
-
-    // Deletes an event from Firestore
-    const handleDeleteEvent = async (eventId) => {
-        if (!firebaseDb) {
-            console.error("Firestore is not initialized.");
-            return;
+    </script>
+    <style>
+        /* Estilização personalizada */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #F9FAFB;
         }
-        
-        try {
-            // --- CHANGED: Delete from public collection ---
-            const docRef = doc(firebaseDb, 'artifacts', appId, 'public', 'data', 'appointments', eventId);
-            await deleteDoc(docRef);
-        } catch (e) {
-            console.error("Error deleting document: ", e);
+        .fade-in {
+            animation: fadeIn 0.6s ease-in-out;
         }
-    };
-
-    // Closes the modal and resets form data
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedDate(null);
-        setFormData({
-            name: '',
-            whatsapp: '',
-            email: '',
-            responsibleEmail: '',
-            ministryGroup: '',
-            desiredSpace: '',
-            notes: '',
-            timeSlot: ''
-        });
-    };
-
-    // Checks if a day has events
-    const hasEventsForDay = (day) => {
-        const dateKey = format(day, 'yyyy-MM-dd');
-        return events[dateKey] && events[dateKey].length > 0;
-    };
-    
-    // --- Navigation ---
-
-    // Goes to the previous month
-    const handlePrevMonth = () => {
-        setCurrentDate(prevDate => {
-            const newDate = new Date(prevDate);
-            newDate.setMonth(prevDate.getMonth() - 1);
-            return newDate;
-        });
-    };
-
-    // Goes to the next month
-    const handleNextMonth = () => {
-        setCurrentDate(prevDate => {
-            const newDate = new Date(prevDate);
-            newDate.setMonth(prevDate.getMonth() + 1);
-            return newDate;
-        });
-    };
-
-    // --- Gemini API Integration ---
-    const handleGeminiExpansion = async () => {
-        const userPrompt = `Expande a seguinte nota de evento, tornando-a mais detalhada e descritiva. Mantém o tom profissional e formal. Nota: ${formData.notes}`;
-        setIsAILoading(true);
-
-        let chatHistory = [];
-        chatHistory.push({ role: "user", parts: [{ text: userPrompt }] });
-        const payload = { contents: chatHistory };
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        let response;
-        try {
-            response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`API error: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (text) {
-                setFormData(prevFormData => ({
-                    ...prevFormData,
-                    notes: text
-                }));
-            }
-        } catch (error) {
-            console.error("Erro ao chamar a API do Gemini:", error);
-        } finally {
-            setIsAILoading(false);
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-    };
+        /* Estilos para o modal */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        /* Scrollbar customizada para a lista de eventos */
+        #event-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        #event-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        #event-list::-webkit-scrollbar-thumb {
+            background: #d1c4e9; /* Roxo claro */
+            border-radius: 10px;
+        }
+        #event-list::-webkit-scrollbar-thumb:hover {
+            background: #b39ddb; /* Roxo um pouco mais escuro */
+        }
+        /* Estilo para opções desabilitadas */
+        select option:disabled {
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
 
-    return (
-        <div className="min-h-screen bg-gray-100 p-4 flex justify-center items-start">
-            <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-lg mt-10">
-                 {/* User ID display for collaborative purposes */}
-                {userId && (
-                    <div className="text-center text-sm text-gray-500 mb-4">
-                        <p>Seu ID de Utilizador: <span className="font-mono bg-gray-200 px-2 py-1 rounded-md">{userId}</span></p>
-                    </div>
-                )}
-                
-                {/* Loading indicator */}
-                {isLoading && (
-                    <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center rounded-3xl z-40">
-                        <p className="text-gray-700 text-lg font-semibold">Carregando...</p>
-                    </div>
-                )}
+    <div class="w-full max-w-4xl mx-auto">
+        <!-- Cabeçalho Principal -->
+        <div class="text-center mb-4 fade-in">
+            <h1 class="text-3xl font-bold text-custom-purple">Sistema de Agendamento</h1>
+            <p class="text-gray-500 mt-1">Gerencie reservas de espaços e eventos da sua organização de forma simples e eficiente.</p>
+        </div>
+        <div class="text-center mb-8 fade-in" style="animation-delay: 0.1s;">
+             <p id="welcome-message" class="text-sm text-gray-600"><span class="font-semibold">Olá, Bem-vindo!</span></p>
+        </div>
 
-                {/* Calendar Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <button onClick={handlePrevMonth} className="p-2 rounded-full hover:bg-gray-200 transition-all duration-200">
-                        <ChevronLeft className="h-6 w-6 text-gray-600" />
-                    </button>
-                    <h2 className="text-3xl font-extrabold text-gray-800">
-                        {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
-                    </h2>
-                    <button onClick={handleNextMonth} className="p-2 rounded-full hover:bg-gray-200 transition-all duration-200">
-                        <ChevronRight className="h-6 w-6 text-gray-600" />
-                    </button>
-                </div>
-
-                {/* Days of the week */}
-                <div className="grid grid-cols-7 gap-2 text-center text-sm font-semibold text-gray-500 mb-2">
-                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                        <div key={day}>{day}</div>
-                    ))}
-                </div>
-
-                {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-2">
-                    {/* Empty days at the beginning of the month */}
-                    {emptyDays.map((_, index) => (
-                        <div key={`empty-${index}`} className="aspect-square"></div>
-                    ))}
-                    {/* Days of the month */}
-                    {daysInMonth.map(day => (
-                        <div
-                            key={day.toISOString()}
-                            onClick={() => handleDayClick(day)}
-                            className={`
-                                p-2 text-center rounded-xl cursor-pointer transition-all duration-200
-                                font-medium flex items-center justify-center relative aspect-square
-                                ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white font-bold shadow-md' : 'text-gray-800 hover:bg-blue-100'}
-                                ${hasEventsForDay(day) && 'ring-2 ring-offset-2 ring-purple-500'}
-                            `}
-                        >
-                            {format(day, 'd')}
-                            {/* Visual indicator for events */}
-                            {hasEventsForDay(day) && (
-                                <span className="absolute bottom-1 right-1 h-2 w-2 bg-purple-500 rounded-full animate-pulse"></span>
-                            )}
-                        </div>
-                    ))}
-                </div>
-
-                {/* Modal for adding/viewing events */}
-                {isModalOpen && selectedDate && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-lg relative">
-                            <button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
-                                <X size={24} />
-                            </button>
-                            <h3 className="text-2xl font-bold mb-4">
-                                Agendar para {format(selectedDate, 'd MMMM, yyyy', { locale: ptBR })}
-                            </h3>
-                            
-                            {/* Display existing events */}
-                            {events[format(selectedDate, 'yyyy-MM-dd')]?.length > 0 && (
-                                <div className="mb-6">
-                                    <h4 className="text-lg font-semibold mb-2">Eventos Agendados</h4>
-                                    <ul className="space-y-2 max-h-40 overflow-y-auto pr-2">
-                                        {events[format(selectedDate, 'yyyy-MM-dd')].map(event => (
-                                            <li key={event.id} className="flex flex-col p-4 bg-gray-100 rounded-lg shadow-sm">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="font-bold text-blue-600">{event.name}</span>
-                                                    <button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:text-red-700 transition-colors">
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                                <div className="text-sm text-gray-600 space-y-1">
-                                                    <p><span className="font-medium">WhatsApp:</span> {event.whatsapp}</p>
-                                                    <p><span className="font-medium">Email:</span> {event.email}</p>
-                                                    <p><span className="font-medium">Responsável:</span> {event.responsibleEmail}</p>
-                                                    <p><span className="font-medium">Ministério/Grupo:</span> {event.ministryGroup}</p>
-                                                    <p><span className="font-medium">Espaço:</span> {event.desiredSpace}</p>
-                                                    <p><span className="font-medium">Horário:</span> {event.timeSlot}</p>
-                                                    <p><span className="font-medium">Observações:</span> {event.notes || 'N/A'}</p>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-
-                            {/* Add new event form */}
-                            <form onSubmit={handleAddEvent} className="space-y-4">
-                                <h4 className="text-lg font-semibold border-t pt-4">Adicionar Novo Agendamento</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleInputChange}
-                                        className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                        placeholder="Nome"
-                                    />
-                                    <input
-                                        type="tel"
-                                        name="whatsapp"
-                                        value={formData.whatsapp}
-                                        onChange={handleInputChange}
-                                        className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                        placeholder="WhatsApp"
-                                    />
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleInputChange}
-                                        className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                        placeholder="Email"
-                                    />
-                                    <input
-                                        type="email"
-                                        name="responsibleEmail"
-                                        value={formData.responsibleEmail}
-                                        onChange={handleInputChange}
-                                        className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                        placeholder="Email do Responsável"
-                                    />
-                                    <input
-                                        type="text"
-                                        name="ministryGroup"
-                                        value={formData.ministryGroup}
-                                        onChange={handleInputChange}
-                                        className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                        placeholder="Ministério / Grupo"
-                                    />
-                                    <select
-                                        name="desiredSpace"
-                                        value={formData.desiredSpace}
-                                        onChange={handleInputChange}
-                                        className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                    >
-                                        <option value="" disabled>Selecione um espaço</option>
-                                        <option value="Lounge">Lounge</option>
-                                        <option value="Templo">Templo</option>
-                                        <option value="Sala Alta para até 25 pessoas">Sala Alta para até 25 pessoas</option>
-                                        <option value="Sala ID para até 15 pessoas">Sala ID para até 15 pessoas</option>
-                                        <option value="Reserva de Data para Cantina">Reserva de Data para Cantina</option>
-                                        <option value="Outro">Outro</option>
-                                    </select>
-                                    <select
-                                        name="timeSlot"
-                                        value={formData.timeSlot}
-                                        onChange={handleInputChange}
-                                        className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                    >
-                                        <option value="" disabled>Selecione um horário</option>
-                                        <option value="08:00 - 18:00">08h00 - 18h00</option>
-                                        <option value="18:00 - 22:00">18h00 - 22h00</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                                    <div className="relative">
-                                        <textarea
-                                            id="notes"
-                                            name="notes"
-                                            value={formData.notes}
-                                            onChange={handleInputChange}
-                                            className="w-full p-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow resize-y"
-                                            rows="3"
-                                            placeholder="Adicione uma nota rápida..."
-                                        ></textarea>
-                                        <button
-                                            type="button"
-                                            onClick={handleGeminiExpansion}
-                                            disabled={isAILoading || formData.notes.trim() === ''}
-                                            className="absolute top-2 right-2 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-400"
-                                            title="Expandir nota com IA"
-                                        >
-                                            {isAILoading ? (
-                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            ) : (
-                                                <Sparkles size={20} />
-                                            )}
-                                        </button>
-                                    </div>
-                                    {isAILoading && (
-                                        <p className="text-center text-sm text-gray-500 mt-2">A expandir a nota com IA...</p>
-                                    )}
-                                </div>
-                                <button
-                                    type="submit"
-                                    className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={18} /> Agendar Evento
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-                {/* Custom Alert Modal for form validation */}
-                {showErrorModal && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-lg text-center relative">
-                             <div className="flex justify-center mb-4">
-                                <AlertTriangle size={48} className="text-red-500" />
-                            </div>
-                            <h4 className="text-xl font-bold mb-2">Campos Incompletos</h4>
-                            <p className="text-gray-700 mb-4">Por favor, preencha todos os campos do formulário para adicionar um agendamento.</p>
-                            <button
-                                onClick={() => setShowErrorModal(false)}
-                                className="w-full bg-red-500 text-white font-semibold py-3 px-4 rounded-xl hover:bg-red-600 transition-colors"
-                            >
-                                OK
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Custom Alert Modal for scheduling conflicts */}
-                {showConflictModal && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-lg text-center relative">
-                             <div className="flex justify-center mb-4">
-                                <AlertTriangle size={48} className="text-yellow-500" />
-                            </div>
-                            <h4 className="text-xl font-bold mb-2">Conflito de Agendamento</h4>
-                            <p className="text-gray-700 mb-4">O espaço e horário selecionados já estão reservados. Por favor, escolha outro horário ou espaço.</p>
-                            <button
-                                onClick={() => setShowConflictModal(false)}
-                                className="w-full bg-yellow-500 text-white font-semibold py-3 px-4 rounded-xl hover:bg-yellow-600 transition-colors"
-                            >
-                                Entendi
-                            </button>
-                        </div>
-                    </div>
-                )}
+        <!-- Cartões de Estatísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 fade-in" style="animation-delay: 0.2s;">
+            <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4">
+                <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0h18M12 12.75h.008v.008H12v-.008Z" /></svg></div>
+                <div><p id="events-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Eventos agendados</p></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4">
+                <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg></div>
+                <div><p id="spaces-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Espaços Utilizados</p></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4">
+                <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.5-2.962A3.375 3.375 0 0 1 12 12.75a3.375 3.375 0 0 1 3.75 3.375m-3.75 0h3.75M12 12.75a3.375 3.375 0 0 0-3.75 3.375M9 15l1.076 1.076a2.25 2.25 0 0 1 3.182 0l1.076-1.076M15 11.25a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg></div>
+                <div><p class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Membros Ativos</p></div>
             </div>
         </div>
-    );
-}
+
+        <!-- Calendário -->
+        <div class="w-full bg-white rounded-2xl shadow-sm p-6 fade-in" style="animation-delay: 0.3s;">
+            <div class="flex items-center justify-between mb-6">
+                <button id="prev-month" class="p-2 rounded-full hover:bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                <h2 id="month-year" class="text-lg font-semibold text-custom-purple text-center capitalize"></h2>
+                <button id="next-month" class="p-2 rounded-full hover:bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+            </div>
+            <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-400 mb-4">
+                <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+            </div>
+            <div id="calendar-days" class="grid grid-cols-7 gap-y-1"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Eventos -->
+    <div id="event-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay items-center justify-center flex hidden z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl modal-content opacity-0 transform -translate-y-5">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="modal-title" class="text-xl font-bold text-gray-800"></h3>
+                    <p class="text-sm text-gray-500">Visualize eventos existentes e adicione novos agendamentos para esta data.</p>
+                </div>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Coluna Esquerda: Lista de Eventos -->
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center"><span class="w-2 h-2 bg-custom-purple rounded-full mr-2"></span>Eventos Agendados</h4>
+                    <div id="event-list" class="space-y-3 pr-2 max-h-80 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+                        <!-- Lista de eventos será preenchida aqui -->
+                    </div>
+                </div>
+                
+                <!-- Coluna Direita: Formulário de Agendamento -->
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-3">+ Adicionar Novo Agendamento</h4>
+                    <form id="event-form" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label for="event-name" class="text-xs font-medium text-gray-600">Nome</label><input type="text" id="event-name" placeholder="Nome completo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required></div>
+                            <div><label for="event-whatsapp" class="text-xs font-medium text-gray-600">WhatsApp</label><input type="text" id="event-whatsapp" placeholder="(00) 00000-0000" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label for="event-email" class="text-xs font-medium text-gray-600">Email</label><input type="email" id="event-email" placeholder="email@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                            <div><label for="event-responsavel" class="text-xs font-medium text-gray-600">Email do Responsável</label><input type="email" id="event-responsavel" placeholder="responsavel@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                        </div>
+                        <div><label for="event-ministerio" class="text-xs font-medium text-gray-600">Ministério / Grupo</label><input type="text" id="event-ministerio" placeholder="Nome do ministério ou grupo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="event-espaco" class="text-xs font-medium text-gray-600">Espaço Desejado</label>
+                                <select id="event-espaco" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
+                                    <option value="" disabled selected>Selecione um espaço</option>
+                                    <option>Lounge</option>
+                                    <option>Templo</option>
+                                    <option>Sala Alta para até 25 pessoas</option>
+                                    <option>Sala ID para até 15 pessoas</option>
+                                    <option>Reserva de Data para Cantina</option>
+                                    <option>Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="event-horario" class="text-xs font-medium text-gray-600">Horário</label>
+                                <select id="event-horario" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
+                                    <option value="" disabled selected>Selecione um horário</option>
+                                    <option>08h00 - 18h00</option>
+                                    <option>18h00 - 22h00</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div><label for="event-observacoes" class="text-xs font-medium text-gray-600">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></textarea></div>
+                        <button id="save-event-btn" type="submit" class="w-full bg-custom-purple text-white py-2 px-4 rounded-lg hover:bg-opacity-90 font-semibold flex items-center justify-center">+ Agendar Evento</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- AUTENTICAÇÃO ---
+        let userId = null;
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+            userId = auth.currentUser.uid;
+            document.getElementById('welcome-message').innerHTML = `<span class="font-semibold">Seu ID de usuário:</span> <span class="text-xs">${userId}</span>`;
+        } catch (error) {
+            console.error("Erro na autenticação:", error);
+            document.getElementById('welcome-message').textContent = "Erro de autenticação. Os dados não serão salvos.";
+        }
+
+        // --- ELEMENTOS DO DOM ---
+        const monthYearEl = document.getElementById('month-year');
+        const calendarDaysEl = document.getElementById('calendar-days');
+        const prevMonthBtn = document.getElementById('prev-month');
+        const nextMonthBtn = document.getElementById('next-month');
+        const eventsCountEl = document.getElementById('events-count');
+        const spacesCountEl = document.getElementById('spaces-count');
+        
+        // Modal e Formulário
+        const eventModal = document.getElementById('event-modal');
+        const modalContent = eventModal.querySelector('.modal-content');
+        const modalTitle = document.getElementById('modal-title');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const eventForm = document.getElementById('event-form');
+        const eventListEl = document.getElementById('event-list');
+        const espacoSelect = document.getElementById('event-espaco');
+        const horarioSelect = document.getElementById('event-horario');
+
+        // --- ESTADO DO APP ---
+        let currentDate = new Date();
+        let allEvents = [];
+        let selectedDate = null;
+        const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+        // --- LÓGICA DO CALENDÁRIO ---
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            monthYearEl.textContent = `${monthNames[month]} de ${year}`;
+            calendarDaysEl.innerHTML = '';
+            
+            const firstDayOfMonth = new Date(year, month, 1).getDay();
+            const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
+            
+            for (let i = 0; i < firstDayOfMonth; i++) { calendarDaysEl.appendChild(document.createElement('div')); }
+            
+            for (let i = 1; i <= lastDateOfMonth; i++) {
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const isToday = dateString === new Date().toISOString().split('T')[0];
+                const hasEvents = allEvents.some(event => event.date === dateString);
+                createDayElement(i, isToday, hasEvents, dateString);
+            }
+        }
+
+        function createDayElement(day, isToday, hasEvents, dateString) {
+            const dayElWrapper = document.createElement('div');
+            dayElWrapper.className = 'flex items-center justify-center p-1 relative';
+            const dayEl = document.createElement('div');
+            dayEl.textContent = day;
+            dayEl.className = 'flex items-center justify-center h-10 w-10 rounded-lg text-sm transition-colors duration-300 cursor-pointer';
+            if (isToday) { 
+                dayEl.classList.add('bg-custom-purple', 'text-white', 'font-bold'); 
+            } else { 
+                dayEl.classList.add('text-gray-600', 'hover:bg-light-purple'); 
+            }
+            if (hasEvents) {
+                const eventDot = document.createElement('div');
+                eventDot.className = 'absolute bottom-2 h-1.5 w-1.5 bg-custom-purple rounded-full';
+                if(isToday) eventDot.classList.add('bg-white');
+                dayEl.appendChild(eventDot);
+            }
+            dayEl.addEventListener('click', () => openModal(dateString));
+            dayElWrapper.appendChild(dayEl);
+            calendarDaysEl.appendChild(dayElWrapper);
+        }
+
+        // --- LÓGICA DO MODAL E CONFLITOS (REFEITA) ---
+        function updateAvailability() {
+            const selectedSpace = espacoSelect.value;
+            // Filtra eventos APENAS para o dia selecionado
+            const dayEvents = allEvents.filter(event => event.date === selectedDate);
+
+            for (const option of horarioSelect.options) {
+                if (!option.value) continue; // Pula o placeholder
+                
+                let isBooked = false;
+                if (selectedSpace) {
+                    // Verifica se existe um evento para o espaço E o horário no dia selecionado
+                    isBooked = dayEvents.some(event => event.espaco === selectedSpace && event.horario === option.value);
+                }
+                
+                option.disabled = isBooked;
+                if (isBooked) {
+                    option.textContent = `${option.value} (Indisponível)`;
+                } else {
+                    option.textContent = option.value;
+                }
+            }
+        }
+
+        function openModal(dateString) {
+            selectedDate = dateString;
+            const date = new Date(dateString + 'T00:00:00');
+            modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+            
+            // Passa a lista de eventos filtrada para as funções de UI
+            const dayEvents = allEvents.filter(event => event.date === selectedDate);
+            updateEventList(dayEvents);
+            updateAvailability(); // A função agora filtra por si só
+            
+            eventModal.classList.remove('hidden');
+            setTimeout(() => {
+                eventModal.classList.remove('opacity-0');
+                modalContent.classList.remove('opacity-0', '-translate-y-5');
+            }, 10);
+        }
+
+        function closeModal() {
+            eventModal.classList.add('opacity-0');
+            modalContent.classList.add('opacity-0', '-translate-y-5');
+            setTimeout(() => {
+                eventModal.classList.add('hidden');
+                eventForm.reset();
+            }, 300);
+        }
+
+        function updateEventList(dayEvents) {
+            eventListEl.innerHTML = '';
+            if(dayEvents.length === 0) {
+                eventListEl.innerHTML = '<div class="text-center text-sm text-gray-500 p-4">Nenhum evento agendado para esta data.</div>';
+            } else {
+                dayEvents.sort((a, b) => a.horario.localeCompare(b.horario)).forEach(event => {
+                    const eventItem = document.createElement('div');
+                    eventItem.className = 'flex justify-between items-start bg-white p-3 rounded-lg border';
+                    eventItem.innerHTML = `
+                        <div>
+                            <p class="font-semibold text-sm text-gray-800">${event.nome}</p>
+                            <p class="text-xs text-gray-500">${event.horario} - ${event.espaco}</p>
+                        </div>
+                    `;
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.className = 'text-red-400 hover:text-red-600 font-bold text-lg leading-none';
+                    deleteBtn.onclick = () => deleteEventFromDb(event.id);
+                    eventItem.appendChild(deleteBtn);
+                    eventListEl.appendChild(eventItem);
+                });
+            }
+        }
+
+        // --- LÓGICA DO FIREBASE E WEBHOOK ---
+        const eventsCollectionPath = `/artifacts/${appId}/public/data/events`;
+        const eventsCollection = collection(db, eventsCollectionPath);
+
+        async function saveEventToDb(e) {
+            e.preventDefault();
+            if (!userId) { 
+                alert("Você não está autenticado. Não é possível salvar.");
+                return; 
+            }
+            
+            const fullEventData = {
+                date: selectedDate,
+                nome: document.getElementById('event-name').value.trim(),
+                whatsapp: document.getElementById('event-whatsapp').value,
+                email: document.getElementById('event-email').value,
+                responsavelEmail: document.getElementById('event-responsavel').value,
+                ministerio: document.getElementById('event-ministerio').value,
+                espaco: espacoSelect.value,
+                horario: horarioSelect.value,
+                observacoes: document.getElementById('event-observacoes').value,
+                createdAt: new Date().toISOString(),
+                owner: userId
+            };
+
+            if (!fullEventData.nome || !fullEventData.espaco || !fullEventData.horario) { 
+                alert("Os campos 'Nome', 'Espaço Desejado' e 'Horário' são obrigatórios."); 
+                return; 
+            }
+            
+            const dayEvents = allEvents.filter(event => event.date === selectedDate);
+            const hasConflict = dayEvents.some(event => event.espaco === fullEventData.espaco && event.horario === fullEventData.horario);
+            
+            if (hasConflict) {
+                alert("Conflito de agendamento! Este espaço já foi reservado neste horário. Por favor, selecione outra combinação.");
+                updateAvailability();
+                return;
+            }
+
+            try {
+                const docRef = await addDoc(eventsCollection, fullEventData);
+                console.log("Evento salvo no Firebase com ID: ", docRef.id);
+
+                const webhookPayload = {
+                    nome: fullEventData.nome,
+                    telefone: fullEventData.whatsapp,
+                    email: fullEventData.email,
+                    ministerio_grupo: fullEventData.ministerio,
+                    espaco_desejado: fullEventData.espaco,
+                    horario: fullEventData.horario,
+                    observacoes: fullEventData.observacoes
+                };
+                
+                console.log("Enviando para o webhook:", JSON.stringify(webhookPayload, null, 2));
+
+                const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(webhookPayload)
+                });
+
+                if (response.ok) {
+                    console.log('Dados enviados para o webhook com sucesso!');
+                } else {
+                    console.error('Falha ao enviar dados para o webhook:', response.status, response.statusText);
+                    const responseBody = await response.text();
+                    console.error('Corpo da resposta do Webhook:', responseBody);
+                }
+
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao salvar evento ou enviar para o webhook: ", error);
+                alert("Ocorreu um erro ao salvar o agendamento.");
+            }
+        }
+
+        async function deleteEventFromDb(eventId) {
+            if (!userId) { console.error("Usuário não autenticado."); return; }
+            try {
+                await deleteDoc(doc(db, eventsCollectionPath, eventId));
+            } catch(error) {
+                console.error("Erro ao deletar evento: ", error);
+            }
+        }
+
+        function listenToEvents() {
+            if (!userId) return;
+            const q = query(eventsCollection);
+            onSnapshot(q, (snapshot) => {
+                allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                let usedSpaces = new Set();
+                allEvents.forEach(event => {
+                    if(event.espaco && event.espaco !== 'Outro') {
+                        usedSpaces.add(event.espaco);
+                    }
+                });
+
+                eventsCountEl.textContent = allEvents.length;
+                spacesCountEl.textContent = usedSpaces.size;
+                renderCalendar();
+                
+                if (!eventModal.classList.contains('hidden')) {
+                    updateAvailability();
+                    updateEventList(allEvents.filter(event => event.date === selectedDate));
+                }
+            });
+        }
+
+        // --- EVENT LISTENERS ---
+        prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+        nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        closeModalBtn.addEventListener('click', closeModal);
+        eventForm.addEventListener('submit', saveEventToDb);
+        eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeModal(); });
+        espacoSelect.addEventListener('change', updateAvailability);
+
+        // --- INICIALIZAÇÃO ---
+        listenToEvents();
+        renderCalendar();
+    </script>
+</body>
+</html>
