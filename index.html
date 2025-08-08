@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Agendamento</title>
+    <title>Sistema de Agendamento com Aprovação</title>
     <!-- Incluindo Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Incluindo a fonte Inter do Google Fonts -->
@@ -45,52 +45,65 @@
         .modal-content {
             transition: transform 0.3s ease, opacity 0.3s ease;
         }
-        /* Scrollbar customizada para a lista de eventos */
-        #event-list::-webkit-scrollbar {
+        /* Scrollbar customizada */
+        #event-list::-webkit-scrollbar, .modal-content::-webkit-scrollbar {
             width: 6px;
         }
-        #event-list::-webkit-scrollbar-track {
+        #event-list::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 10px;
         }
-        #event-list::-webkit-scrollbar-thumb {
-            background: #d1c4e9; /* Roxo claro */
+        #event-list::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb {
+            background: #d1c4e9;
             border-radius: 10px;
         }
-        #event-list::-webkit-scrollbar-thumb:hover {
-            background: #b39ddb; /* Roxo um pouco mais escuro */
+        #event-list::-webkit-scrollbar-thumb:hover, .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #b39ddb;
         }
-        /* Estilo para opções desabilitadas */
-        select option:disabled {
-            color: #9ca3af;
+        /* Estilo para opções desabilitadas e botões */
+        select option:disabled { color: #9ca3af; }
+        .action-button {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background-color 0.2s;
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
+<body class="p-4">
+    <!-- Botão de Login / Status do Usuário -->
+    <div id="auth-container" class="absolute top-4 right-4 text-right">
+        <button id="open-login-modal-btn" class="bg-custom-purple text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-opacity-90">
+            Login Admin
+        </button>
+        <div id="user-status" class="hidden">
+            <p class="text-sm text-gray-700">Logado como: <span id="user-email" class="font-semibold"></span></p>
+            <button id="logout-btn" class="text-xs text-red-500 hover:underline">Sair</button>
+        </div>
+    </div>
 
-    <div class="w-full max-w-4xl mx-auto">
+
+    <div class="w-full max-w-4xl mx-auto mt-16">
         <!-- Cabeçalho Principal -->
         <div class="text-center mb-4 fade-in">
             <h1 class="text-3xl font-bold text-custom-purple">Sistema de Agendamento</h1>
-            <p class="text-gray-500 mt-1">Gerencie reservas de espaços e eventos da sua organização de forma simples e eficiente.</p>
+            <p class="text-gray-500 mt-1">Gerencie solicitações de espaços com fluxo de aprovação.</p>
         </div>
-        <div class="text-center mb-8 fade-in" style="animation-delay: 0.1s;">
-             <p id="welcome-message" class="text-sm text-gray-600"><span class="font-semibold">Olá, Bem-vindo!</span></p>
-        </div>
-
+        
         <!-- Cartões de Estatísticas -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 fade-in" style="animation-delay: 0.2s;">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-10 fade-in" style="animation-delay: 0.2s;">
             <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4">
-                <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0h18M12 12.75h.008v.008H12v-.008Z" /></svg></div>
-                <div><p id="events-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Eventos agendados</p></div>
+                <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></div>
+                <div><p id="approved-events-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Eventos Aprovados</p></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4">
+                <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></div>
+                <div><p id="pending-events-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Eventos Pendentes</p></div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4">
                 <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg></div>
                 <div><p id="spaces-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Espaços Utilizados</p></div>
-            </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4">
-                <div class="bg-light-purple p-3 rounded-lg"><svg class="w-6 h-6 text-custom-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.5-2.962A3.375 3.375 0 0 1 12 12.75a3.375 3.375 0 0 1 3.75 3.375m-3.75 0h3.75M12 12.75a3.375 3.375 0 0 0-3.75 3.375M9 15l1.076 1.076a2.25 2.25 0 0 1 3.182 0l1.076-1.076M15 11.25a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg></div>
-                <div><p class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Membros Ativos</p></div>
             </div>
         </div>
 
@@ -108,14 +121,38 @@
         </div>
     </div>
 
+    <!-- Modal de Login -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay items-center justify-center flex hidden z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm modal-content">
+            <h3 class="text-xl font-bold text-gray-800 text-center mb-2">Login de Administrador</h3>
+            <p class="text-sm text-gray-500 text-center mb-6">Acesse para gerenciar as solicitações.</p>
+            <form id="login-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="login-email" class="text-xs font-medium text-gray-600">Email</label>
+                        <input type="email" id="login-email" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
+                    </div>
+                    <div>
+                        <label for="login-password" class="text-xs font-medium text-gray-600">Senha</label>
+                        <input type="password" id="login-password" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
+                    </div>
+                </div>
+                <p id="login-error" class="text-red-500 text-xs mt-2 text-center h-4"></p>
+                <div class="mt-6 flex space-x-4">
+                     <button type="button" id="close-login-modal-btn" class="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    <button type="submit" class="w-full bg-custom-purple text-white py-2 px-4 rounded-lg hover:bg-opacity-90 font-semibold">Entrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal de Eventos -->
     <div id="event-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay items-center justify-center flex hidden z-50 p-4">
-        <!-- **MUDANÇA APLICADA AQUI PARA RESPONSIVIDADE** -->
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg md:max-w-3xl modal-content opacity-0 transform -translate-y-5 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl modal-content opacity-0 transform -translate-y-5 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <h3 id="modal-title" class="text-xl font-bold text-gray-800"></h3>
-                    <p class="text-sm text-gray-500">Visualize eventos existentes e adicione novos agendamentos para esta data.</p>
+                    <p class="text-sm text-gray-500">Visualize e gerencie as solicitações para esta data.</p>
                 </div>
                 <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
@@ -123,7 +160,7 @@
             <div class="grid md:grid-cols-2 gap-8">
                 <!-- Coluna Esquerda: Lista de Eventos -->
                 <div>
-                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center"><span class="w-2 h-2 bg-custom-purple rounded-full mr-2"></span>Eventos Agendados</h4>
+                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center"><span class="w-2 h-2 bg-custom-purple rounded-full mr-2"></span>Solicitações</h4>
                     <div id="event-list" class="space-y-3 pr-2 max-h-80 overflow-y-auto border rounded-lg p-3 bg-gray-50">
                         <!-- Lista de eventos será preenchida aqui -->
                     </div>
@@ -131,18 +168,18 @@
                 
                 <!-- Coluna Direita: Formulário de Agendamento -->
                 <div>
-                    <h4 class="font-semibold text-gray-700 mb-3">+ Adicionar Novo Agendamento</h4>
+                    <h4 class="font-semibold text-gray-700 mb-3">+ Nova Solicitação</h4>
                     <form id="event-form" class="space-y-3">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div><label for="event-name" class="text-xs font-medium text-gray-600">Nome</label><input type="text" id="event-name" placeholder="Nome completo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required></div>
                             <div><label for="event-whatsapp" class="text-xs font-medium text-gray-600">WhatsApp</label><input type="text" id="event-whatsapp" placeholder="(00) 00000-0000" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div><label for="event-email" class="text-xs font-medium text-gray-600">Email</label><input type="email" id="event-email" placeholder="email@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
                             <div><label for="event-responsavel" class="text-xs font-medium text-gray-600">Email do Responsável</label><input type="email" id="event-responsavel" placeholder="responsavel@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
                         </div>
                         <div><label for="event-ministerio" class="text-xs font-medium text-gray-600">Ministério / Grupo</label><input type="text" id="event-ministerio" placeholder="Nome do ministério ou grupo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label for="event-espaco" class="text-xs font-medium text-gray-600">Espaço Desejado</label>
                                 <select id="event-espaco" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
@@ -165,7 +202,7 @@
                             </div>
                         </div>
                         <div><label for="event-observacoes" class="text-xs font-medium text-gray-600">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></textarea></div>
-                        <button id="save-event-btn" type="submit" class="w-full bg-custom-purple text-white py-2 px-4 rounded-lg hover:bg-opacity-90 font-semibold flex items-center justify-center">+ Agendar Evento</button>
+                        <button id="save-event-btn" type="submit" class="w-full bg-custom-purple text-white py-2 px-4 rounded-lg hover:bg-opacity-90 font-semibold flex items-center justify-center">+ Solicitar Agendamento</button>
                     </form>
                 </div>
             </div>
@@ -175,10 +212,10 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELO SEU) ---
+        // --- CONFIGURAÇÃO DO FIREBASE ---
         const firebaseConfig = {
           apiKey: "AIzaSyBcTIht4nIFVsxL3dKE7-UwExkksIVm7Jk",
           authDomain: "agendamentocnaguasclara.firebaseapp.com",
@@ -193,32 +230,29 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- AUTENTICAÇÃO ---
-        let userId = null;
-        try {
-            await signInAnonymously(auth);
-            userId = auth.currentUser.uid;
-            document.getElementById('welcome-message').innerHTML = `<span class="font-semibold">Bem-vindo!</span> <span class="text-xs italic">(Sessão anónima)</span>`;
-        } catch (error) {
-            console.error("Erro na autenticação anónima:", error);
-            if (error.code === 'auth/configuration-not-found') {
-                 document.getElementById('welcome-message').innerHTML = `<span class="font-semibold text-red-600">Erro de Configuração!</span> <span class="text-xs">Por favor, ative o método de login "Anónimo" no seu painel do Firebase (Authentication > Sign-in method).</span>`;
-            } else {
-                document.getElementById('welcome-message').textContent = "Erro de autenticação. Os dados não serão salvos.";
-            }
-        }
+        // --- LISTA DE ADMINISTRADORES ---
+        // Adicione aqui os UIDs dos usuários que terão permissão de administrador.
+        // Você pode encontrar o UID de um usuário no painel do Firebase Authentication.
+        const adminUIDs = ["acpMKMv2HKYys1UxxlOKHms4Kaw2"];
+
+        // --- ESTADO DO APP ---
+        let currentUser = null;
+        let currentDate = new Date();
+        let allEvents = [];
+        let selectedDate = null;
+        const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
         // --- ELEMENTOS DO DOM ---
         const monthYearEl = document.getElementById('month-year');
         const calendarDaysEl = document.getElementById('calendar-days');
         const prevMonthBtn = document.getElementById('prev-month');
         const nextMonthBtn = document.getElementById('next-month');
-        const eventsCountEl = document.getElementById('events-count');
+        const approvedEventsCountEl = document.getElementById('approved-events-count');
+        const pendingEventsCountEl = document.getElementById('pending-events-count');
         const spacesCountEl = document.getElementById('spaces-count');
         
-        // Modal e Formulário
+        // Modal de Eventos
         const eventModal = document.getElementById('event-modal');
-        const modalContent = eventModal.querySelector('.modal-content');
         const modalTitle = document.getElementById('modal-title');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const eventForm = document.getElementById('event-form');
@@ -226,11 +260,64 @@
         const espacoSelect = document.getElementById('event-espaco');
         const horarioSelect = document.getElementById('event-horario');
 
-        // --- ESTADO DO APP ---
-        let currentDate = new Date();
-        let allEvents = [];
-        let selectedDate = null;
-        const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+        // Modal de Login
+        const loginModal = document.getElementById('login-modal');
+        const openLoginModalBtn = document.getElementById('open-login-modal-btn');
+        const closeLoginModalBtn = document.getElementById('close-login-modal-btn');
+        const loginForm = document.getElementById('login-form');
+        const loginErrorEl = document.getElementById('login-error');
+        const authContainer = document.getElementById('auth-container');
+        const userStatusEl = document.getElementById('user-status');
+        const userEmailEl = document.getElementById('user-email');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // --- LÓGICA DE AUTENTICAÇÃO ---
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            updateAuthUI(user);
+            if (!eventModal.classList.contains('hidden')) {
+                updateEventList();
+            }
+        });
+
+        function updateAuthUI(user) {
+            if (user) {
+                openLoginModalBtn.classList.add('hidden');
+                userStatusEl.classList.remove('hidden');
+                userEmailEl.textContent = user.email;
+            } else {
+                openLoginModalBtn.classList.remove('hidden');
+                userStatusEl.classList.add('hidden');
+                userEmailEl.textContent = '';
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            loginErrorEl.textContent = '';
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                loginModal.classList.add('hidden');
+                loginForm.reset();
+            } catch (error) {
+                console.error("Erro de login:", error.code);
+                loginErrorEl.textContent = 'Email ou senha inválidos.';
+            }
+        }
+
+        async function handleLogout() {
+            await signOut(auth);
+        }
+
+        openLoginModalBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
+        closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
+        loginModal.addEventListener('click', (e) => { if (e.target === loginModal) loginModal.classList.add('hidden'); });
+        loginForm.addEventListener('submit', handleLogin);
+        logoutBtn.addEventListener('click', handleLogout);
+
 
         // --- LÓGICA DO CALENDÁRIO ---
         function renderCalendar() {
@@ -246,112 +333,186 @@
             
             for (let i = 1; i <= lastDateOfMonth; i++) {
                 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                const isToday = dateString === new Date().toISOString().split('T')[0];
-                const hasEvents = allEvents.some(event => event.date === dateString);
-                createDayElement(i, isToday, hasEvents, dateString);
+                const hasApprovedEvents = allEvents.some(event => event.date === dateString && event.status === 'aprovado');
+                const hasPendingEvents = allEvents.some(event => event.date === dateString && event.status === 'pendente');
+                createDayElement(i, dateString, hasApprovedEvents, hasPendingEvents);
             }
         }
 
-        function createDayElement(day, isToday, hasEvents, dateString) {
+        function createDayElement(day, dateString, hasApprovedEvents, hasPendingEvents) {
             const dayElWrapper = document.createElement('div');
             dayElWrapper.className = 'flex items-center justify-center p-1 relative';
             const dayEl = document.createElement('div');
             dayEl.textContent = day;
+            const isToday = dateString === new Date().toISOString().split('T')[0];
             dayEl.className = 'flex items-center justify-center h-10 w-10 rounded-lg text-sm transition-colors duration-300 cursor-pointer';
+            
             if (isToday) { 
                 dayEl.classList.add('bg-custom-purple', 'text-white', 'font-bold'); 
             } else { 
                 dayEl.classList.add('text-gray-600', 'hover:bg-light-purple'); 
             }
-            if (hasEvents) {
+
+            if (hasApprovedEvents || hasPendingEvents) {
                 const eventDot = document.createElement('div');
-                eventDot.className = 'absolute bottom-2 h-1.5 w-1.5 bg-custom-purple rounded-full';
-                if(isToday) eventDot.classList.add('bg-white');
+                eventDot.className = 'absolute bottom-2 h-1.5 w-1.5 rounded-full';
+                if (hasApprovedEvents) {
+                    eventDot.classList.add(isToday ? 'bg-white' : 'bg-custom-purple');
+                } else {
+                    eventDot.classList.add(isToday ? 'bg-gray-300' : 'bg-gray-400');
+                }
                 dayEl.appendChild(eventDot);
             }
+
             dayEl.addEventListener('click', () => openModal(dateString));
             dayElWrapper.appendChild(dayEl);
             calendarDaysEl.appendChild(dayElWrapper);
         }
 
-        // --- LÓGICA DO MODAL E CONFLITOS ---
-        function updateAvailability() {
+        // --- LÓGICA DE HORÁRIOS ---
+        function updateHorarioOptions() {
             const selectedSpace = espacoSelect.value;
-            const dayEvents = allEvents.filter(event => event.date === selectedDate);
+            for (const option of horarioSelect.options) {
+                if (option.value) option.disabled = false;
+            }
+
+            if (!selectedSpace) {
+                horarioSelect.value = '';
+                return;
+            }
+
+            const dayEventsForSpace = allEvents.filter(event =>
+                event.date === selectedDate && event.espaco === selectedSpace
+            );
+            const bookedHorarios = dayEventsForSpace.map(event => event.horario);
 
             for (const option of horarioSelect.options) {
-                if (!option.value) continue;
-                
-                let isBooked = false;
-                if (selectedSpace) {
-                    isBooked = dayEvents.some(event => event.espaco === selectedSpace && event.horario === option.value);
+                if (bookedHorarios.includes(option.value)) {
+                    option.disabled = true;
                 }
-                
-                option.disabled = isBooked;
-                option.textContent = isBooked ? `${option.value} (Indisponível)` : option.value;
+            }
+
+            if (horarioSelect.options[horarioSelect.selectedIndex]?.disabled) {
+                horarioSelect.value = '';
             }
         }
 
+        // --- LÓGICA DO MODAL ---
         function openModal(dateString) {
+            eventForm.reset();
             selectedDate = dateString;
-            
             const date = new Date(dateString + 'T00:00:00');
             modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
             
-            const dayEvents = allEvents.filter(event => event.date === selectedDate);
-            updateEventList(dayEvents);
-            updateAvailability();
+            updateEventList();
+            updateHorarioOptions();
             
             eventModal.classList.remove('hidden');
             setTimeout(() => {
                 eventModal.classList.remove('opacity-0');
-                modalContent.classList.remove('opacity-0', '-translate-y-5');
+                eventModal.querySelector('.modal-content').classList.remove('opacity-0', '-translate-y-5');
             }, 10);
         }
 
         function closeModal() {
             eventModal.classList.add('opacity-0');
-            modalContent.classList.add('opacity-0', '-translate-y-5');
+            eventModal.querySelector('.modal-content').classList.add('opacity-0', '-translate-y-5');
             setTimeout(() => {
                 eventModal.classList.add('hidden');
                 eventForm.reset();
             }, 300);
         }
 
-        function updateEventList(dayEvents) {
+        function updateEventList() {
+            const dayEvents = allEvents.filter(event => event.date === selectedDate);
             eventListEl.innerHTML = '';
-            if(dayEvents.length === 0) {
-                eventListEl.innerHTML = '<div class="text-center text-sm text-gray-500 p-4">Nenhum evento agendado para esta data.</div>';
-            } else {
-                dayEvents.sort((a, b) => a.horario.localeCompare(b.horario)).forEach(event => {
-                    const eventItem = document.createElement('div');
-                    eventItem.className = 'flex justify-between items-start bg-white p-3 rounded-lg border';
+            if (dayEvents.length === 0) {
+                eventListEl.innerHTML = '<div class="text-center text-sm text-gray-500 p-4">Nenhuma solicitação para esta data.</div>';
+                return;
+            }
+
+            const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
+
+            dayEvents.sort((a, b) => (a.horario || "").localeCompare(b.horario || "")).forEach(event => {
+                const eventItem = document.createElement('div');
+                eventItem.className = 'bg-white p-3 rounded-lg border';
+
+                if (isUserAdmin) {
+                    // --- VISÃO DO ADMINISTRADOR ---
+                    let statusBadge = '';
+                    if (event.status === 'aprovado') {
+                        statusBadge = '<span class="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">Aprovado</span>';
+                    } else {
+                        statusBadge = '<span class="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Pendente</span>';
+                    }
+
+                    let actionButtons = '';
+                    if (event.status === 'pendente') {
+                        actionButtons = `
+                            <div class="flex items-center space-x-2 mt-3 pt-3 border-t">
+                                <button onclick="window.approveEvent('${event.id}')" class="action-button bg-green-500 text-white hover:bg-green-600">Aprovar</button>
+                                <button onclick="window.rejectEvent('${event.id}')" class="action-button bg-red-400 text-white hover:bg-red-500 p-1 rounded-full flex items-center justify-center w-6 h-6">&times;</button>
+                            </div>
+                        `;
+                    }
+
                     eventItem.innerHTML = `
-                        <div>
-                            <p class="font-semibold text-sm text-gray-800">${event.nome}</p>
-                            <p class="text-xs text-gray-500">${event.horario} - ${event.espaco}</p>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-semibold text-sm text-gray-800">${event.nome}</p>
+                                <p class="text-xs text-gray-500">${event.horario} - ${event.espaco}</p>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="text-xs text-gray-600 mt-2 space-y-1 border-t pt-2">
+                            <p><strong>Contato:</strong> ${event.whatsapp || 'Não informado'}</p>
+                            <p><strong>Email:</strong> ${event.email || 'Não informado'}</p>
+                            <p><strong>Ministério:</strong> ${event.ministerio || 'Não informado'}</p>
+                            <p><strong>Observações:</strong> ${event.observacoes || 'Nenhuma'}</p>
+                        </div>
+                        ${actionButtons}
+                    `;
+                } else {
+                    // --- VISÃO DO USUÁRIO COMUM ---
+                    const statusBadge = '<span class="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">Ocupado</span>';
+                    eventItem.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold text-sm text-gray-800">${event.horario}</p>
+                                <p class="text-xs text-gray-500">${event.espaco}</p>
+                            </div>
+                            ${statusBadge}
                         </div>
                     `;
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.innerHTML = '&times;';
-                    deleteBtn.className = 'text-red-400 hover:text-red-600 font-bold text-lg leading-none';
-                    deleteBtn.onclick = () => deleteEventFromDb(event.id);
-                    eventItem.appendChild(deleteBtn);
-                    eventListEl.appendChild(eventItem);
-                });
-            }
+                }
+                eventListEl.appendChild(eventItem);
+            });
         }
 
+
+        // --- AÇÕES DE APROVAÇÃO ---
+        window.approveEvent = async (eventId) => {
+            const eventRef = doc(db, "agendamentos", eventId);
+            try {
+                await updateDoc(eventRef, { status: "aprovado" });
+            } catch (error) {
+                console.error("Erro ao aprovar evento: ", error);
+            }
+        };
+        
+        window.rejectEvent = async (eventId) => {
+            try {
+                await deleteDoc(doc(db, "agendamentos", eventId));
+            } catch (error) {
+                console.error("Erro ao rejeitar evento: ", error);
+            }
+        };
+
         // --- LÓGICA DO FIREBASE E WEBHOOK ---
-        const eventsCollectionPath = `/agendamentos`;
-        const eventsCollection = collection(db, eventsCollectionPath);
+        const eventsCollection = collection(db, "agendamentos");
 
         async function saveEventToDb(e) {
             e.preventDefault();
-            if (!userId) { 
-                alert("Você não está autenticado. Não é possível salvar.");
-                return; 
-            }
             
             const fullEventData = {
                 date: selectedDate,
@@ -364,7 +525,7 @@
                 horario: horarioSelect.value,
                 observacoes: document.getElementById('event-observacoes').value,
                 createdAt: new Date().toISOString(),
-                owner: userId
+                status: 'pendente'
             };
 
             if (!fullEventData.nome || !fullEventData.espaco || !fullEventData.horario) { 
@@ -372,82 +533,50 @@
                 return; 
             }
             
-            const dayEvents = allEvents.filter(event => event.date === selectedDate);
-            const hasConflict = dayEvents.some(event => event.espaco === fullEventData.espaco && event.horario === fullEventData.horario);
+            const hasConflict = allEvents.some(event => 
+                event.date === fullEventData.date &&
+                event.espaco === fullEventData.espaco &&
+                event.horario === fullEventData.horario
+            );
             
             if (hasConflict) {
-                alert("Conflito de agendamento! Este espaço já foi reservado neste horário. Por favor, selecione outra combinação.");
-                updateAvailability();
+                alert("Conflito de agendamento! Este espaço já foi solicitado neste horário.");
+                updateHorarioOptions();
                 return;
             }
 
             try {
                 const docRef = await addDoc(eventsCollection, fullEventData);
-                console.log("Evento salvo no Firebase com ID: ", docRef.id);
-
-                const webhookPayload = {
-                    nome: fullEventData.nome,
-                    telefone: fullEventData.whatsapp,
-                    email: fullEventData.email,
-                    ministerio_grupo: fullEventData.ministerio,
-                    espaco_desejado: fullEventData.espaco,
-                    horario: fullEventData.horario,
-                    observacoes: fullEventData.observacoes
-                };
-                
-                console.log("Enviando para o webhook:", JSON.stringify(webhookPayload, null, 2));
-
                 const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
-                const response = await fetch(webhookUrl, {
+                await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(webhookPayload)
+                    body: JSON.stringify(fullEventData)
                 });
-
-                if (response.ok) {
-                    console.log('Dados enviados para o webhook com sucesso!');
-                } else {
-                    console.error('Falha ao enviar dados para o webhook:', response.status, response.statusText);
-                    const responseBody = await response.text();
-                    console.error('Corpo da resposta do Webhook:', responseBody);
-                }
-
                 closeModal();
             } catch (error) {
-                console.error("Erro ao salvar evento ou enviar para o webhook: ", error);
-                alert("Ocorreu um erro ao salvar o agendamento.");
-            }
-        }
-
-        async function deleteEventFromDb(eventId) {
-            if (!userId) { console.error("Usuário não autenticado."); return; }
-            try {
-                await deleteDoc(doc(db, eventsCollectionPath, eventId));
-            } catch(error) {
-                console.error("Erro ao deletar evento: ", error);
+                console.error("Erro ao salvar solicitação: ", error);
+                alert("Ocorreu um erro ao salvar a solicitação.");
             }
         }
 
         function listenToEvents() {
-            if (!userId) return; 
-            const q = query(eventsCollection);
-            onSnapshot(q, (snapshot) => {
+            onSnapshot(query(eventsCollection), (snapshot) => {
                 allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 
-                let usedSpaces = new Set();
-                allEvents.forEach(event => {
-                    if(event.espaco && event.espaco !== 'Outro') {
-                        usedSpaces.add(event.espaco);
-                    }
-                });
+                const approvedEvents = allEvents.filter(e => e.status === 'aprovado');
+                const pendingEvents = allEvents.filter(e => e.status === 'pendente');
+                let usedSpaces = new Set(approvedEvents.map(e => e.espaco));
 
-                eventsCountEl.textContent = allEvents.length;
+                approvedEventsCountEl.textContent = approvedEvents.length;
+                pendingEventsCountEl.textContent = pendingEvents.length;
                 spacesCountEl.textContent = usedSpaces.size;
+                
                 renderCalendar();
                 
                 if (!eventModal.classList.contains('hidden')) {
-                    updateAvailability();
-                    updateEventList(allEvents.filter(event => event.date === selectedDate));
+                    updateEventList();
+                    updateHorarioOptions();
                 }
             });
         }
@@ -458,15 +587,10 @@
         closeModalBtn.addEventListener('click', closeModal);
         eventForm.addEventListener('submit', saveEventToDb);
         eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeModal(); });
-        espacoSelect.addEventListener('change', updateAvailability);
+        espacoSelect.addEventListener('change', updateHorarioOptions);
 
         // --- INICIALIZAÇÃO ---
-        if (userId) {
-            listenToEvents();
-            renderCalendar();
-        } else {
-            renderCalendar();
-        }
+        listenToEvents();
     </script>
 </body>
 </html>
