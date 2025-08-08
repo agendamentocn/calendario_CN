@@ -231,8 +231,6 @@
         const db = getFirestore(app);
 
         // --- LISTA DE ADMINISTRADORES ---
-        // Adicione aqui os UIDs dos usuários que terão permissão de administrador.
-        // Você pode encontrar o UID de um usuário no painel do Firebase Authentication.
         const adminUIDs = ["acpMKMv2HKYys1UxxlOKHms4Kaw2"];
 
         // --- ESTADO DO APP ---
@@ -547,11 +545,24 @@
 
             try {
                 const docRef = await addDoc(eventsCollection, fullEventData);
+                
+                const webhookPayload = {
+                    date: fullEventData.date,
+                    nome: fullEventData.nome,
+                    telefone: fullEventData.whatsapp,
+                    email: fullEventData.email,
+                    ministerio_grupo: fullEventData.ministerio,
+                    espaco_desejado: fullEventData.espaco,
+                    horario: fullEventData.horario,
+                    observacoes: fullEventData.observacoes,
+                    status: fullEventData.status
+                };
+
                 const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
                 await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(fullEventData)
+                    body: JSON.stringify(webhookPayload)
                 });
                 closeModal();
             } catch (error) {
