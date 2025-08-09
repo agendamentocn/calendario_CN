@@ -10,6 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Incluindo Heroicons para ícones -->
+    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
     <script>
         // Configuração personalizada para o Tailwind CSS
         tailwind.config = {
@@ -19,6 +22,10 @@
                         'custom-purple': '#8A63D2',
                         'light-purple': '#F4F1FA',
                         'dark-purple': '#5A3E8A',
+                        'brand-primary': '#7C3AED',
+                        'brand-secondary': '#A78BFA',
+                        'brand-light': '#F5F3FF',
+                        'brand-dark': '#6D28D9',
                     }
                 }
             }
@@ -30,7 +37,7 @@
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            background-color: #f8f9fa;
+            background-color: #F8F7FC;
         }
         .fade-in {
             animation: fadeIn 0.6s ease-in-out;
@@ -42,6 +49,8 @@
         /* Estilos para o modal */
         .modal-overlay {
             transition: opacity 0.3s ease;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
         }
         .modal-content {
             transition: transform 0.3s ease, opacity 0.3s ease;
@@ -79,8 +88,8 @@
             transition: all 0.2s ease-in-out;
         }
         .card-interactive:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px -2px rgb(0 0 0 / 0.05);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px -5px rgb(124 58 237 / 0.15);
         }
         .input-group {
             position: relative;
@@ -111,70 +120,90 @@
         #toggle-date-selector-btn svg {
             transition: transform 0.3s;
         }
+        /* Estilos de formulário aprimorados */
+        .form-input {
+             background-color: #F9FAFB;
+             border-color: #D1D5DB;
+             transition: all 0.2s ease;
+        }
+        .form-input:focus {
+            --tw-ring-color: rgb(167 139 250 / 0.5);
+            border-color: #A78BFA;
+            box-shadow: 0 0 0 2px var(--tw-ring-color);
+        }
+        .btn-primary {
+            background-image: linear-gradient(to right, #8B5CF6, #6D28D9);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px -5px rgb(139 92 246 / 0.4);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px -5px rgb(139 92 246 / 0.5);
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <div class="relative w-full max-w-4xl mx-auto">
         <!-- Botão de Login / Status do Usuário -->
         <div id="auth-container" class="absolute top-0 right-0 text-right z-20">
-            <button id="open-login-modal-btn" class="bg-custom-purple text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-dark-purple transition-colors shadow-md hover:shadow-lg">
+            <button id="open-login-modal-btn" class="btn-primary text-white px-4 py-2 rounded-lg text-sm font-semibold">
                 Login Admin
             </button>
             <div id="user-status" class="hidden bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-md flex items-center gap-2">
-                <p class="text-sm font-semibold text-dark-purple">Admin Logado</p>
+                <p class="text-sm font-semibold text-brand-dark">Admin Logado</p>
                 <button id="logout-btn" class="text-xs text-red-500 hover:underline font-semibold">Sair</button>
             </div>
         </div>
 
         <!-- Cabeçalho Principal -->
         <div class="text-center pt-16 sm:pt-10 mb-10 fade-in">
-            <h1 class="text-3xl md:text-4xl font-bold text-dark-purple">Sistema de Agendamento</h1>
+            <h1 class="text-3xl md:text-4xl font-bold text-brand-dark">Sistema de Agendamento</h1>
             <p class="text-gray-500 mt-2">Gerencie solicitações de espaços com um fluxo de aprovação simples e eficiente.</p>
         </div>
         
         <!-- Cartões de Estatísticas -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-10 fade-in" style="animation-delay: 0.2s;">
-            <div id="approved-card" class="bg-white p-5 rounded-xl shadow-md flex items-center space-x-4 border">
+            <div id="approved-card" class="bg-white p-5 rounded-xl shadow-lg shadow-gray-200/50 flex items-center space-x-4 border border-gray-100">
                 <div class="bg-green-100 p-3 rounded-full"><svg class="w-6 h-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div>
                 <div><p id="approved-events-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Aprovados</p></div>
             </div>
-            <div id="pending-card" class="bg-white p-5 rounded-xl shadow-md flex items-center space-x-4 border">
+            <div id="pending-card" class="bg-white p-5 rounded-xl shadow-lg shadow-gray-200/50 flex items-center space-x-4 border border-gray-100">
                 <div class="bg-yellow-100 p-3 rounded-full"><svg class="w-6 h-6 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
                 <div><p id="pending-events-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Pendentes</p></div>
             </div>
-            <div id="spaces-card" class="bg-white p-5 rounded-xl shadow-md flex items-center space-x-4 border">
+            <div id="spaces-card" class="bg-white p-5 rounded-xl shadow-lg shadow-gray-200/50 flex items-center space-x-4 border border-gray-100">
                 <div class="bg-blue-100 p-3 rounded-full"><svg class="w-6 h-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
                 <div><p id="spaces-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Espaços Utilizados</p></div>
             </div>
         </div>
 
         <!-- Calendário -->
-        <div class="w-full bg-white rounded-2xl shadow-lg p-4 sm:p-6 fade-in" style="animation-delay: 0.3s;">
+        <div class="w-full bg-white rounded-2xl shadow-lg shadow-gray-200/60 p-4 sm:p-6 fade-in" style="animation-delay: 0.3s;">
             <div class="flex items-center justify-between">
-                <button id="prev-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                <button id="prev-month" class="p-2 rounded-full hover:bg-brand-light transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 
                 <!-- Botão de Título Integrado -->
-                <button id="toggle-date-selector-btn" class="flex items-center gap-2 text-base sm:text-lg font-semibold text-dark-purple text-center capitalize hover:bg-light-purple px-4 py-2 rounded-lg transition-colors">
+                <button id="toggle-date-selector-btn" class="flex items-center gap-2 text-base sm:text-lg font-semibold text-brand-dark text-center capitalize hover:bg-brand-light px-4 py-2 rounded-lg transition-colors">
                     <span id="month-year"></span>
                     <svg class="w-5 h-5 text-gray-600 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                     </svg>
                 </button>
 
-                <button id="next-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+                <button id="next-month" class="p-2 rounded-full hover:bg-brand-light transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
             <!-- Seletor de Data Responsivo -->
             <div id="date-selector-container">
                 <div class="bg-gray-50 p-4 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4">
-                    <button id="today-btn" class="w-full sm:w-auto text-sm font-semibold text-custom-purple hover:text-dark-purple transition-colors px-4 py-2 rounded-md bg-white border border-gray-200">Hoje</button>
+                    <button id="today-btn" class="w-full sm:w-auto text-sm font-semibold text-brand-primary hover:text-brand-dark transition-colors px-4 py-2 rounded-md bg-white border border-gray-200">Hoje</button>
                     <div class="w-full sm:w-px sm:h-6 bg-gray-300"></div>
                     <div class="w-full flex flex-col sm:flex-row sm:items-center gap-3">
                         <label for="month-select" class="text-sm font-medium text-gray-600 hidden sm:block">Ir para:</label>
-                        <select id="month-select" class="w-full sm:w-auto border-gray-300 rounded-md shadow-sm text-sm focus:ring-custom-purple focus:border-custom-purple p-2"></select>
-                        <select id="year-select" class="w-full sm:w-auto border-gray-300 rounded-md shadow-sm text-sm focus:ring-custom-purple focus:border-custom-purple p-2"></select>
+                        <select id="month-select" class="form-input w-full sm:w-auto border-gray-300 rounded-md shadow-sm text-sm focus:ring-brand-primary focus:border-brand-primary p-2"></select>
+                        <select id="year-select" class="form-input w-full sm:w-auto border-gray-300 rounded-md shadow-sm text-sm focus:ring-brand-primary focus:border-brand-primary p-2"></select>
                     </div>
-                    <button id="go-to-date-btn" class="w-full sm:w-auto bg-custom-purple text-white p-2 rounded-lg hover:bg-dark-purple transition-colors shadow flex items-center justify-center">
+                    <button id="go-to-date-btn" class="btn-primary w-full sm:w-auto text-white p-2 rounded-lg shadow flex items-center justify-center">
                         <span class="sm:hidden">Ir para Data</span>
                         <svg class="hidden sm:block w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
@@ -191,7 +220,7 @@
     </div>
 
     <!-- Modal de Login -->
-    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay items-center justify-center flex hidden z-50 p-4">
+    <div id="login-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm modal-content">
             <h3 class="text-xl font-bold text-gray-800 text-center mb-2">Login de Administrador</h3>
             <p class="text-sm text-gray-500 text-center mb-6">Acesse para gerenciar as solicitações.</p>
@@ -199,24 +228,24 @@
                 <div class="space-y-4">
                     <div class="input-group">
                          <svg class="input-icon w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm0 0c0 1.657 1.007 3 2.25 3S21 13.657 21 12a9 9 0 10-2.636 6.364M16.5 12V8.25" /></svg>
-                        <input type="email" id="login-email" class="input-field mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" placeholder="Email" required>
+                        <input type="email" id="login-email" class="form-input input-field mt-1 w-full rounded-md shadow-sm text-sm" placeholder="Email" required>
                     </div>
                     <div class="input-group">
                         <svg class="input-icon w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                        <input type="password" id="login-password" class="input-field mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" placeholder="Senha" required>
+                        <input type="password" id="login-password" class="form-input input-field mt-1 w-full rounded-md shadow-sm text-sm" placeholder="Senha" required>
                     </div>
                 </div>
                 <p id="login-feedback" class="text-xs mt-3 text-center h-4"></p>
                 <div class="mt-6 flex space-x-4">
                      <button type="button" id="close-login-modal-btn" class="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-                    <button type="submit" id="login-submit-btn" class="w-full bg-custom-purple text-white py-2 px-4 rounded-lg hover:bg-dark-purple font-semibold flex items-center justify-center">Entrar</button>
+                    <button type="submit" id="login-submit-btn" class="w-full btn-primary text-white py-2 px-4 rounded-lg font-semibold flex items-center justify-center">Entrar</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Modal de Eventos do Dia -->
-    <div id="event-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay items-center justify-center flex hidden z-50 p-4">
+    <div id="event-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl modal-content opacity-0 transform -translate-y-5 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-start mb-4">
                 <div>
@@ -229,7 +258,7 @@
             <div class="grid md:grid-cols-2 gap-8">
                 <!-- Coluna Esquerda: Lista de Eventos -->
                 <div>
-                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center"><span class="w-2 h-2 bg-custom-purple rounded-full mr-2"></span>Solicitações</h4>
+                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center"><span class="w-2 h-2 bg-brand-primary rounded-full mr-2"></span>Solicitações</h4>
                     <div id="event-list" class="space-y-3 pr-2 max-h-80 overflow-y-auto">
                         <!-- Lista de eventos será preenchida aqui -->
                     </div>
@@ -238,20 +267,20 @@
                 <!-- Coluna Direita: Formulário de Agendamento -->
                 <div>
                     <h4 class="font-semibold text-gray-700 mb-3">+ Nova Solicitação</h4>
-                    <form id="event-form" class="space-y-3">
+                    <form id="event-form" class="space-y-3" novalidate>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div><label for="event-name" class="text-xs font-medium text-gray-600">Nome</label><input type="text" id="event-name" placeholder="Nome completo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required></div>
-                            <div><label for="event-whatsapp" class="text-xs font-medium text-gray-600">WhatsApp</label><input type="text" id="event-whatsapp" placeholder="(00) 00000-0000" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                            <div><label for="event-name" class="text-xs font-medium text-gray-600">Nome</label><input type="text" id="event-name" placeholder="Nome completo" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
+                            <div><label for="event-whatsapp" class="text-xs font-medium text-gray-600">WhatsApp</label><input type="text" id="event-whatsapp" placeholder="(00) 00000-0000" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div><label for="event-email" class="text-xs font-medium text-gray-600">Email</label><input type="email" id="event-email" placeholder="email@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
-                            <div><label for="event-responsavel" class="text-xs font-medium text-gray-600">Email do Responsável</label><input type="email" id="event-responsavel" placeholder="responsavel@exemplo.com" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                            <div><label for="event-email" class="text-xs font-medium text-gray-600">Email</label><input type="email" id="event-email" placeholder="email@exemplo.com" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
+                            <div><label for="event-responsavel" class="text-xs font-medium text-gray-600">Email do Responsável</label><input type="email" id="event-responsavel" placeholder="responsavel@exemplo.com" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
                         </div>
-                        <div><label for="event-ministerio" class="text-xs font-medium text-gray-600">Ministério / Grupo</label><input type="text" id="event-ministerio" placeholder="Nome do ministério ou grupo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                        <div><label for="event-ministerio" class="text-xs font-medium text-gray-600">Ministério / Grupo</label><input type="text" id="event-ministerio" placeholder="Nome do ministério ou grupo" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label for="event-espaco" class="text-xs font-medium text-gray-600">Espaço Desejado</label>
-                                <select id="event-espaco" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
+                                <select id="event-espaco" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
                                     <option value="" disabled selected>Selecione um espaço</option>
                                     <option>Lounge</option>
                                     <option>Templo</option>
@@ -263,15 +292,19 @@
                             </div>
                             <div>
                                 <label for="event-horario" class="text-xs font-medium text-gray-600">Horário</label>
-                                <select id="event-horario" class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm" required>
+                                <select id="event-horario" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
                                     <option value="" disabled selected>Selecione um horário</option>
                                     <option>08h00 - 18h00</option>
                                     <option>18h00 - 22h00</option>
                                 </select>
                             </div>
                         </div>
-                        <div><label for="event-observacoes" class="text-xs font-medium text-gray-600">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"></textarea></div>
-                        <button id="save-event-btn" type="submit" class="w-full bg-custom-purple text-white py-2 px-4 rounded-lg hover:bg-dark-purple font-semibold flex items-center justify-center transition-colors">+ Solicitar Agendamento</button>
+                        <div><label for="event-observacoes" class="text-xs font-medium text-gray-600">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="form-input mt-1 w-full rounded-md shadow-sm text-sm"></textarea></div>
+                        
+                        <!-- Mensagens de Validação -->
+                        <div id="form-validation-feedback" class="text-sm text-red-600 bg-red-100 p-3 rounded-lg hidden mt-4"></div>
+
+                        <button id="save-event-btn" type="submit" class="w-full btn-primary text-white py-2.5 px-4 rounded-lg font-semibold flex items-center justify-center transition-colors">+ Solicitar Agendamento</button>
                     </form>
                 </div>
             </div>
@@ -279,7 +312,7 @@
     </div>
 
     <!-- Modal de Listas -->
-    <div id="list-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay items-center justify-center flex hidden z-50 p-4">
+    <div id="list-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg modal-content opacity-0 transform -translate-y-5 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
                 <h3 id="list-modal-title" class="text-xl font-bold text-gray-800"></h3>
@@ -465,16 +498,16 @@
             dayEl.className = 'flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-sm transition-colors duration-300 cursor-pointer';
             
             if (isToday) { 
-                dayEl.classList.add('bg-custom-purple', 'text-white', 'font-bold'); 
+                dayEl.classList.add('bg-brand-primary', 'text-white', 'font-bold'); 
             } else { 
-                dayEl.classList.add('text-gray-600', 'hover:bg-light-purple'); 
+                dayEl.classList.add('text-gray-600', 'hover:bg-brand-light'); 
             }
 
             if (hasApprovedEvents || hasPendingEvents) {
                 const eventDot = document.createElement('div');
                 eventDot.className = 'absolute bottom-1.5 h-1.5 w-1.5 rounded-full';
                 if (hasApprovedEvents) {
-                    eventDot.classList.add(isToday ? 'bg-white' : 'bg-custom-purple');
+                    eventDot.classList.add(isToday ? 'bg-white' : 'bg-brand-primary');
                 } else {
                     eventDot.classList.add(isToday ? 'bg-gray-300' : 'bg-yellow-400');
                 }
@@ -546,6 +579,13 @@
         // --- LÓGICA DOS MODAIS ---
         function openDayModal(dateString) {
             eventForm.reset();
+            // Limpa feedback de validação ao abrir o modal
+            const feedbackEl = document.getElementById('form-validation-feedback');
+            if (feedbackEl) {
+                feedbackEl.classList.add('hidden');
+                feedbackEl.innerHTML = '';
+            }
+            
             selectedDate = dateString;
             const date = new Date(dateString + 'T00:00:00');
             modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
@@ -723,6 +763,52 @@
 
         async function saveEventToDb(e) {
             e.preventDefault();
+
+            // --- INÍCIO DA VALIDAÇÃO APRIMORADA ---
+            const feedbackEl = document.getElementById('form-validation-feedback');
+            const fieldsToValidate = [
+                { id: 'event-name', name: 'Nome' },
+                { id: 'event-whatsapp', name: 'WhatsApp' },
+                { id: 'event-email', name: 'Email', type: 'email' },
+                { id: 'event-responsavel', name: 'Email do Responsável', type: 'email' },
+                { id: 'event-ministerio', name: 'Ministério / Grupo' },
+                { id: 'event-espaco', name: 'Espaço Desejado' },
+                { id: 'event-horario', name: 'Horário' }
+            ];
+            let errors = [];
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            // Limpa erros visuais anteriores
+            fieldsToValidate.forEach(fieldInfo => {
+                 const field = document.getElementById(fieldInfo.id);
+                 field.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+                 field.classList.add('border-gray-300');
+            });
+            feedbackEl.innerHTML = '';
+            feedbackEl.classList.add('hidden');
+
+            // Itera e valida cada campo
+            fieldsToValidate.forEach(fieldInfo => {
+                const field = document.getElementById(fieldInfo.id);
+                const value = field.value.trim();
+                
+                if (!value) {
+                    errors.push(`O campo "<strong>${fieldInfo.name}</strong>" é obrigatório.`);
+                    field.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+                    field.classList.remove('border-gray-300');
+                } else if (fieldInfo.type === 'email' && !emailRegex.test(value)) {
+                    errors.push(`O "<strong>${fieldInfo.name}</strong>" não parece ser um email válido.`);
+                    field.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+                    field.classList.remove('border-gray-300');
+                }
+            });
+
+            if (errors.length > 0) {
+                feedbackEl.innerHTML = errors.join('<br>');
+                feedbackEl.classList.remove('hidden');
+                return; // Impede o envio do formulário
+            }
+            // --- FIM DA VALIDAÇÃO ---
             
             const fullEventData = {
                 date: selectedDate,
@@ -737,11 +823,6 @@
                 createdAt: new Date().toISOString(),
                 status: 'pendente'
             };
-
-            if (!fullEventData.nome || !fullEventData.espaco || !fullEventData.horario) { 
-                alert("Os campos 'Nome', 'Espaço Desejado' e 'Horário' são obrigatórios."); 
-                return; 
-            }
             
             const hasConflict = allEvents.some(event => 
                 event.date === fullEventData.date &&
@@ -750,7 +831,8 @@
             );
             
             if (hasConflict) {
-                alert("Conflito de agendamento! Este espaço já foi solicitado neste horário.");
+                feedbackEl.innerHTML = "Conflito de agendamento! Este espaço já foi solicitado neste horário.";
+                feedbackEl.classList.remove('hidden');
                 updateHorarioOptions();
                 return;
             }
@@ -779,7 +861,8 @@
                 closeDayModal();
             } catch (error) {
                 console.error("Erro ao salvar solicitação: ", error);
-                alert("Ocorreu um erro ao salvar a solicitação.");
+                feedbackEl.innerHTML = "Ocorreu um erro ao salvar a solicitação. Tente novamente.";
+                feedbackEl.classList.remove('hidden');
             }
         }
 
