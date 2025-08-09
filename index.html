@@ -318,7 +318,26 @@
                 <h3 id="list-modal-title" class="text-xl font-bold text-gray-800"></h3>
                 <button id="close-list-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
-            <div id="list-modal-content" class="overflow-y-auto bg-gray-50 p-2 rounded-b-xl">
+            
+            <!-- Filtro para a lista de aprovados -->
+            <div id="list-modal-filter-container" class="mb-4 hidden space-y-3">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                         <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <input type="text" id="list-modal-filter-input" class="form-input w-full pl-10 p-2 text-sm" placeholder="Filtrar por nome, espaço, data...">
+                </div>
+                <div>
+                    <label for="month-filter-select" class="sr-only">Filtrar por Mês</label>
+                    <select id="month-filter-select" class="form-input w-full text-sm"></select>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="future-events-filter-checkbox" class="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary">
+                    <label for="future-events-filter-checkbox" class="ml-2 block text-sm text-gray-700">Apenas eventos futuros</label>
+                </div>
+            </div>
+
+            <div id="list-modal-content" class="flex-1 overflow-y-auto bg-gray-50 p-2 rounded-b-xl">
                 <!-- Conteúdo da lista será injetado aqui -->
             </div>
         </div>
@@ -681,24 +700,60 @@
         }
 
         // --- LÓGICA DOS CARDS DE ESTATÍSTICAS ---
-        function showEventListInModal(status) {
-            const isApprovedList = status === 'aprovado';
-            const title = isApprovedList ? 'Eventos Aprovados' : 'Eventos Pendentes';
-            listModalTitle.textContent = title;
+        function renderListInModal(events, status) {
+            const filterInput = document.getElementById('list-modal-filter-input');
+            const futureEventsCheckbox = document.getElementById('future-events-filter-checkbox');
+            const monthFilterSelect = document.getElementById('month-filter-select');
             
-            const filteredEvents = allEvents.filter(event => event.status === status)
-                                            .sort((a,b) => new Date(a.date) - new Date(b.date));
+            const searchTerm = filterInput.value.toLowerCase().trim();
+            const showOnlyFuture = futureEventsCheckbox.checked;
+            const selectedMonth = monthFilterSelect.value;
+            const isApprovedList = status === 'aprovado';
+
+            let eventsToDisplay = [...events];
+
+            // Aplica os filtros apenas para a lista de aprovados
+            if (isApprovedList) {
+                // Filtro por mês
+                if (selectedMonth) {
+                    eventsToDisplay = eventsToDisplay.filter(event => event.date.startsWith(selectedMonth));
+                }
+
+                // Filtro de eventos futuros
+                if (showOnlyFuture) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0); // Normaliza a data de hoje para comparar apenas o dia
+                    eventsToDisplay = eventsToDisplay.filter(event => {
+                        const eventDate = new Date(event.date + 'T00:00:00');
+                        return eventDate >= today;
+                    });
+                }
+
+                // Filtro por termo de busca
+                if (searchTerm) {
+                    eventsToDisplay = eventsToDisplay.filter(event => {
+                        const date = new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR');
+                        return (event.nome?.toLowerCase() || '').includes(searchTerm) ||
+                               (event.espaco?.toLowerCase() || '').includes(searchTerm) ||
+                               date.includes(searchTerm);
+                    });
+                }
+            }
             
             listModalContent.innerHTML = ''; // Limpa o conteúdo anterior
-            if (filteredEvents.length === 0) {
-                listModalContent.innerHTML = `<div class="text-center text-sm text-gray-500 p-4">Nenhum evento ${isApprovedList ? 'aprovado' : 'pendente'}.</div>`;
+
+            if (eventsToDisplay.length === 0) {
+                listModalContent.innerHTML = `<div class="text-center text-sm text-gray-500 p-4">Nenhum evento encontrado para os filtros aplicados.</div>`;
             } else {
-                listModalContent.innerHTML = filteredEvents.map(event => {
-                    const actionButtons = !isApprovedList ? `
+                listModalContent.innerHTML = eventsToDisplay.map(event => {
+                    const actionButtons = status === 'pendente' ? `
                         <div class="flex items-center space-x-2 mt-3 pt-3 border-t">
                             <button onclick="window.approveEvent('${event.id}')" class="action-button bg-green-500 text-white hover:bg-green-600">Aprovar</button>
                             <button onclick="window.rejectEvent('${event.id}')" class="action-button bg-red-400 text-white hover:bg-red-500 p-1 rounded-full flex items-center justify-center w-6 h-6">&times;</button>
-                        </div>` : '';
+                        </div>` : `
+                        <div class="flex items-center justify-end mt-3 pt-3 border-t">
+                             <button onclick="window.rejectEvent('${event.id}')" class="action-button bg-gray-200 text-gray-600 hover:bg-red-100 hover:text-red-600 p-1 rounded-full flex items-center justify-center w-6 h-6">&times;</button>
+                        </div>`;
 
                     return `
                     <div class="bg-white p-3 rounded-lg border mb-2 shadow-sm">
@@ -718,6 +773,51 @@
                     </div>`;
                 }).join('');
             }
+        }
+        
+        function showEventListInModal(status) {
+            const isApprovedList = status === 'aprovado';
+            const title = isApprovedList ? 'Eventos Aprovados' : 'Eventos Pendentes';
+            listModalTitle.textContent = title;
+
+            const filterContainer = document.getElementById('list-modal-filter-container');
+            const filterInput = document.getElementById('list-modal-filter-input');
+            const futureEventsCheckbox = document.getElementById('future-events-filter-checkbox');
+            const monthFilterSelect = document.getElementById('month-filter-select');
+            
+            const baseEventList = allEvents.filter(event => event.status === status)
+                                            .sort((a,b) => new Date(a.date) - new Date(b.date));
+            
+            // Mostra/esconde e configura os filtros
+            if (isApprovedList) {
+                filterContainer.classList.remove('hidden');
+                filterInput.value = '';
+                futureEventsCheckbox.checked = false;
+
+                // Popula o filtro de mês
+                const uniqueMonths = [...new Set(baseEventList.map(event => event.date.substring(0, 7)))];
+                monthFilterSelect.innerHTML = '<option value="">Todos os meses</option>';
+                uniqueMonths.forEach(monthYear => {
+                    const [year, month] = monthYear.split('-');
+                    const monthName = monthNames[parseInt(month) - 1];
+                    const option = document.createElement('option');
+                    option.value = monthYear;
+                    option.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${year}`;
+                    monthFilterSelect.appendChild(option);
+                });
+                monthFilterSelect.value = '';
+                
+                const rerender = () => renderListInModal(baseEventList, 'aprovado');
+                filterInput.onkeyup = rerender;
+                futureEventsCheckbox.onchange = rerender;
+                monthFilterSelect.onchange = rerender;
+
+            } else {
+                filterContainer.classList.add('hidden');
+            }
+            
+            // Renderização inicial
+            renderListInModal(baseEventList, status);
             openListModal();
         }
 
