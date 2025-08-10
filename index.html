@@ -161,8 +161,8 @@
             <p class="text-gray-500 mt-2">Gerencie solicitações de espaços com um fluxo de aprovação simples e eficiente.</p>
         </div>
         
-        <!-- Cartões de Estatísticas -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-10 fade-in" style="animation-delay: 0.2s;">
+        <!-- Cartões de Estatísticas (Admin) -->
+        <div id="stats-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 my-10 fade-in hidden" style="animation-delay: 0.2s;">
             <div id="approved-card" class="bg-white p-5 rounded-xl shadow-lg shadow-gray-200/50 flex items-center space-x-4 border border-gray-100">
                 <div class="bg-green-100 p-3 rounded-full"><svg class="w-6 h-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div>
                 <div><p id="approved-events-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Aprovados</p></div>
@@ -175,6 +175,11 @@
                 <div class="bg-blue-100 p-3 rounded-full"><svg class="w-6 h-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
                 <div><p id="spaces-count" class="text-2xl font-bold text-gray-800">0</p><p class="text-sm text-gray-500">Espaços Utilizados</p></div>
             </div>
+        </div>
+
+        <!-- Instruções para Usuário -->
+        <div id="user-instructions" class="my-10 p-6 bg-brand-light text-center rounded-xl fade-in hidden" style="animation-delay: 0.2s;">
+            <p class="text-brand-dark">Para agendar o uso de algum dos nossos espaços, selecione a data de interesse abaixo, e, em seguida, preencha o formulário com todas informações necessárias.</p>
         </div>
 
         <!-- Calendário -->
@@ -387,7 +392,9 @@
         const yearSelect = document.getElementById('year-select');
         const goToDateBtn = document.getElementById('go-to-date-btn');
         
-        // Cards de Estatísticas
+        // Cards de Estatísticas e Instruções
+        const statsCardsContainer = document.getElementById('stats-cards-container');
+        const userInstructions = document.getElementById('user-instructions');
         const approvedEventsCountEl = document.getElementById('approved-events-count');
         const pendingEventsCountEl = document.getElementById('pending-events-count');
         const spacesCountEl = document.getElementById('spaces-count');
@@ -439,11 +446,15 @@
                 openLoginModalBtn.classList.add('hidden');
                 userStatusEl.classList.remove('hidden');
                 cards.forEach(card => card.classList.add('card-interactive'));
+                statsCardsContainer.classList.remove('hidden');
+                userInstructions.classList.add('hidden');
             } else {
                 // Visão do usuário comum ou deslogado
                 openLoginModalBtn.classList.remove('hidden');
                 userStatusEl.classList.add('hidden');
                 cards.forEach(card => card.classList.remove('card-interactive'));
+                statsCardsContainer.classList.add('hidden');
+                userInstructions.classList.remove('hidden');
             }
         }
 
@@ -858,13 +869,13 @@
             }
         };
 
-        // --- LÓGICA DO FIREBASE E WEBHOOK ---
+        
         const eventsCollection = collection(db, "agendamentos");
 
         async function saveEventToDb(e) {
             e.preventDefault();
 
-            // --- INÍCIO DA VALIDAÇÃO APRIMORADA ---
+            
             const feedbackEl = document.getElementById('form-validation-feedback');
             const fieldsToValidate = [
                 { id: 'event-name', name: 'Nome' },
@@ -878,7 +889,7 @@
             let errors = [];
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            // Limpa erros visuais anteriores
+            
             fieldsToValidate.forEach(fieldInfo => {
                  const field = document.getElementById(fieldInfo.id);
                  field.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
@@ -887,7 +898,7 @@
             feedbackEl.innerHTML = '';
             feedbackEl.classList.add('hidden');
 
-            // Itera e valida cada campo
+            
             fieldsToValidate.forEach(fieldInfo => {
                 const field = document.getElementById(fieldInfo.id);
                 const value = field.value.trim();
@@ -906,9 +917,9 @@
             if (errors.length > 0) {
                 feedbackEl.innerHTML = errors.join('<br>');
                 feedbackEl.classList.remove('hidden');
-                return; // Impede o envio do formulário
+                return; 
             }
-            // --- FIM DA VALIDAÇÃO ---
+            
             
             const fullEventData = {
                 date: selectedDate,
@@ -985,7 +996,7 @@
                     updateHorarioOptions();
                 }
 
-                // Atualiza o modal de lista se estiver aberto para refletir a mudança
+                
                 if (!listModal.classList.contains('hidden')) {
                     const currentTitle = listModalTitle.textContent;
                     if (currentTitle === 'Eventos Pendentes') {
@@ -997,7 +1008,7 @@
             });
         }
 
-        // --- EVENT LISTENERS ---
+        
         prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); updateDateSelectors(); });
         nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); updateDateSelectors(); });
         todayBtn.addEventListener('click', () => {
@@ -1011,7 +1022,7 @@
         eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeDayModal(); });
         espacoSelect.addEventListener('change', updateHorarioOptions);
 
-        // Listeners para os cards (com verificação de admin)
+        
         approvedCard.addEventListener('click', () => {
             if (currentUser && adminUIDs.includes(currentUser.uid)) {
                 showEventListInModal('aprovado');
@@ -1032,7 +1043,7 @@
 
         toggleDateSelectorBtn.addEventListener('click', () => {
             dateSelectorContainer.classList.toggle('open');
-            // Gira o ícone para indicar o estado aberto/fechado
+            
             toggleDateSelectorBtn.querySelector('svg').classList.toggle('rotate-180');
         });
         goToDateBtn.addEventListener('click', () => {
@@ -1040,8 +1051,6 @@
             dateSelectorContainer.classList.remove('open');
             toggleDateSelectorBtn.querySelector('svg').classList.remove('rotate-180');
         });
-
-        // --- INICIALIZAÇÃO ---
         populateDateSelectors();
         updateDateSelectors();
         listenToEvents();
