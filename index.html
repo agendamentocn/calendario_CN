@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Agendamento com Aprovação</title>
-    <!-- Incluindo Tailwind CSS -->
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Incluindo a fonte Inter do Google Fonts -->
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Incluindo Heroicons para ícones -->
+    
     <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
     <script>
-        // Configuração personalizada para o Tailwind CSS
+        
         tailwind.config = {
             theme: {
                 extend: {
@@ -32,7 +32,7 @@
         }
     </script>
     <style>
-        /* Estilização personalizada */
+        
         body {
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
@@ -46,7 +46,7 @@
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* Estilos para o modal */
+        
         .modal-overlay {
             transition: opacity 0.3s ease;
             background-color: rgba(0, 0, 0, 0.6);
@@ -55,7 +55,7 @@
         .modal-content {
             transition: transform 0.3s ease, opacity 0.3s ease;
         }
-        /* Scrollbar customizada */
+        
         #event-list::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #list-modal-content::-webkit-scrollbar {
             width: 6px;
         }
@@ -70,7 +70,7 @@
         #event-list::-webkit-scrollbar-thumb:hover, .modal-content::-webkit-scrollbar-thumb:hover, #list-modal-content::-webkit-scrollbar-thumb:hover {
             background: #b39ddb;
         }
-        /* Estilo para opções desabilitadas e botões */
+        
         select option:disabled { color: #9ca3af; }
         .action-button {
             padding: 2px 8px;
@@ -82,7 +82,7 @@
         .action-button:hover {
             transform: scale(1.05);
         }
-        /* Estilos para cards clicáveis */
+        
         .card-interactive {
             cursor: pointer;
             transition: all 0.2s ease-in-out;
@@ -104,23 +104,23 @@
         .input-field {
             padding-left: 2.5rem;
         }
-        /* Transição para o container do seletor de data */
+        
         #date-selector-container {
             transition: all 0.3s ease-in-out;
             max-height: 0;
             overflow: hidden;
         }
         #date-selector-container.open {
-            max-height: 500px; /* Altura suficiente para o conteúdo responsivo */
+            max-height: 500px; 
             padding-top: 1rem;
             margin-top: 1rem;
             border-top: 1px solid #e5e7eb;
         }
-        /* Rotação do ícone do seletor */
+        
         #toggle-date-selector-btn svg {
             transition: transform 0.3s;
         }
-        /* Estilos de formulário aprimorados */
+        
         .form-input {
              background-color: #F9FAFB;
              border-color: #D1D5DB;
@@ -144,7 +144,7 @@
 </head>
 <body class="p-4 md:p-8">
     <div class="relative w-full max-w-4xl mx-auto">
-        <!-- Botão de Login / Status do Usuário -->
+        
         <div id="auth-container" class="absolute top-0 right-0 text-right z-20">
             <button id="open-login-modal-btn" class="btn-primary text-white px-4 py-2 rounded-lg text-sm font-semibold">
                 Login Admin
@@ -155,13 +155,13 @@
             </div>
         </div>
 
-        <!-- Cabeçalho Principal -->
+        
         <div class="text-center pt-16 sm:pt-10 mb-10 fade-in">
             <h1 class="text-3xl md:text-4xl font-bold text-brand-dark">Sistema de Agendamento</h1>
             <p class="text-gray-500 mt-2">Gerencie solicitações de espaços com um fluxo de aprovação simples e eficiente.</p>
         </div>
         
-        <!-- Cartões de Estatísticas (Admin) -->
+        
         <div id="stats-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 my-10 fade-in hidden" style="animation-delay: 0.2s;">
             <div id="approved-card" class="bg-white p-5 rounded-xl shadow-lg shadow-gray-200/50 flex items-center space-x-4 border border-gray-100">
                 <div class="bg-green-100 p-3 rounded-full"><svg class="w-6 h-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div>
@@ -177,17 +177,17 @@
             </div>
         </div>
 
-        <!-- Instruções para Usuário -->
+        
         <div id="user-instructions" class="my-10 p-6 bg-brand-light text-center rounded-xl fade-in hidden" style="animation-delay: 0.2s;">
             <p class="text-brand-dark">Para agendar o uso de algum dos nossos espaços, selecione a data de interesse abaixo, e, em seguida, preencha o formulário com todas informações necessárias.</p>
         </div>
 
-        <!-- Calendário -->
+        
         <div class="w-full bg-white rounded-2xl shadow-lg shadow-gray-200/60 p-4 sm:p-6 fade-in" style="animation-delay: 0.3s;">
             <div class="flex items-center justify-between">
                 <button id="prev-month" class="p-2 rounded-full hover:bg-brand-light transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
                 
-                <!-- Botão de Título Integrado -->
+                
                 <button id="toggle-date-selector-btn" class="flex items-center gap-2 text-base sm:text-lg font-semibold text-brand-dark text-center capitalize hover:bg-brand-light px-4 py-2 rounded-lg transition-colors">
                     <span id="month-year"></span>
                     <svg class="w-5 h-5 text-gray-600 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -198,7 +198,7 @@
                 <button id="next-month" class="p-2 rounded-full hover:bg-brand-light transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
-            <!-- Seletor de Data Responsivo -->
+            
             <div id="date-selector-container">
                 <div class="bg-gray-50 p-4 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4">
                     <button id="today-btn" class="w-full sm:w-auto text-sm font-semibold text-brand-primary hover:text-brand-dark transition-colors px-4 py-2 rounded-md bg-white border border-gray-200">Hoje</button>
@@ -224,7 +224,7 @@
         </div>
     </div>
 
-    <!-- Modal de Login -->
+    
     <div id="login-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm modal-content">
             <h3 class="text-xl font-bold text-gray-800 text-center mb-2">Login de Administrador</h3>
@@ -249,7 +249,7 @@
         </div>
     </div>
 
-    <!-- Modal de Eventos do Dia -->
+    
     <div id="event-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl modal-content opacity-0 transform -translate-y-5 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-start mb-4">
@@ -261,15 +261,15 @@
             </div>
             
             <div class="grid md:grid-cols-2 gap-8">
-                <!-- Coluna Esquerda: Lista de Eventos -->
+                
                 <div>
                     <h4 class="font-semibold text-gray-700 mb-3 flex items-center"><span class="w-2 h-2 bg-brand-primary rounded-full mr-2"></span>Solicitações</h4>
                     <div id="event-list" class="space-y-3 pr-2 max-h-80 overflow-y-auto">
-                        <!-- Lista de eventos será preenchida aqui -->
+                        
                     </div>
                 </div>
                 
-                <!-- Coluna Direita: Formulário de Agendamento -->
+                
                 <div>
                     <h4 class="font-semibold text-gray-700 mb-3">+ Nova Solicitação</h4>
                     <form id="event-form" class="space-y-3" novalidate>
@@ -306,7 +306,7 @@
                         </div>
                         <div><label for="event-observacoes" class="text-xs font-medium text-gray-600">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="form-input mt-1 w-full rounded-md shadow-sm text-sm"></textarea></div>
                         
-                        <!-- Mensagens de Validação -->
+                        
                         <div id="form-validation-feedback" class="text-sm text-red-600 bg-red-100 p-3 rounded-lg hidden mt-4"></div>
 
                         <button id="save-event-btn" type="submit" class="w-full btn-primary text-white py-2.5 px-4 rounded-lg font-semibold flex items-center justify-center transition-colors">+ Solicitar Agendamento</button>
@@ -316,7 +316,7 @@
         </div>
     </div>
 
-    <!-- Modal de Listas -->
+    
     <div id="list-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg modal-content opacity-0 transform -translate-y-5 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
@@ -324,7 +324,7 @@
                 <button id="close-list-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
             
-            <!-- Filtro para a lista de aprovados -->
+            
             <div id="list-modal-filter-container" class="mb-4 hidden space-y-3">
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -343,19 +343,19 @@
             </div>
 
             <div id="list-modal-content" class="flex-1 overflow-y-auto bg-gray-50 p-2 rounded-b-xl">
-                <!-- Conteúdo da lista será injetado aqui -->
+                
             </div>
         </div>
     </div>
 
 
-    <!-- Firebase SDKs -->
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURAÇÃO DO FIREBASE ---
+        
         const firebaseConfig = {
           apiKey: "AIzaSyBcTIht4nIFVsxL3dKE7-UwExkksIVm7Jk",
           authDomain: "agendamentocnaguasclara.firebaseapp.com",
@@ -370,17 +370,17 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- LISTA DE ADMINISTRADORES ---
+        
         const adminUIDs = ["acpMKMv2HKYys1UxxlOKHms4Kaw2"];
 
-        // --- ESTADO DO APP ---
+        
         let currentUser = null;
         let currentDate = new Date();
         let allEvents = [];
         let selectedDate = null;
         const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-        // --- ELEMENTOS DO DOM ---
+        
         const monthYearEl = document.getElementById('month-year');
         const calendarDaysEl = document.getElementById('calendar-days');
         const prevMonthBtn = document.getElementById('prev-month');
@@ -392,7 +392,7 @@
         const yearSelect = document.getElementById('year-select');
         const goToDateBtn = document.getElementById('go-to-date-btn');
         
-        // Cards de Estatísticas e Instruções
+        
         const statsCardsContainer = document.getElementById('stats-cards-container');
         const userInstructions = document.getElementById('user-instructions');
         const approvedEventsCountEl = document.getElementById('approved-events-count');
@@ -402,7 +402,7 @@
         const pendingCard = document.getElementById('pending-card');
         const spacesCard = document.getElementById('spaces-card');
         
-        // Modal de Eventos do Dia
+        
         const eventModal = document.getElementById('event-modal');
         const modalTitle = document.getElementById('modal-title');
         const closeModalBtn = document.getElementById('close-modal-btn');
@@ -411,7 +411,7 @@
         const espacoSelect = document.getElementById('event-espaco');
         const horarioSelect = document.getElementById('event-horario');
 
-        // Modal de Login
+        
         const loginModal = document.getElementById('login-modal');
         const openLoginModalBtn = document.getElementById('open-login-modal-btn');
         const closeLoginModalBtn = document.getElementById('close-login-modal-btn');
@@ -422,13 +422,13 @@
         const userStatusEl = document.getElementById('user-status');
         const logoutBtn = document.getElementById('logout-btn');
 
-        // Modal de Listas
+        
         const listModal = document.getElementById('list-modal');
         const listModalTitle = document.getElementById('list-modal-title');
         const listModalContent = document.getElementById('list-modal-content');
         const closeListModalBtn = document.getElementById('close-list-modal-btn');
 
-        // --- LÓGICA DE AUTENTICAÇÃO ---
+        
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             updateAuthUI(user);
@@ -442,14 +442,14 @@
             const cards = [approvedCard, pendingCard, spacesCard];
 
             if (isUserAdmin) {
-                // Visão do Admin
+                
                 openLoginModalBtn.classList.add('hidden');
                 userStatusEl.classList.remove('hidden');
                 cards.forEach(card => card.classList.add('card-interactive'));
                 statsCardsContainer.classList.remove('hidden');
                 userInstructions.classList.add('hidden');
             } else {
-                // Visão do usuário comum ou deslogado
+                
                 openLoginModalBtn.classList.remove('hidden');
                 userStatusEl.classList.add('hidden');
                 cards.forEach(card => card.classList.remove('card-interactive'));
@@ -499,7 +499,7 @@
         logoutBtn.addEventListener('click', handleLogout);
 
 
-        // --- LÓGICA DO CALENDÁRIO ---
+        
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -549,7 +549,7 @@
             calendarDaysEl.appendChild(dayElWrapper);
         }
 
-        // --- LÓGICA DE NAVEGAÇÃO POR DATA ---
+        
         function populateDateSelectors() {
             monthNames.forEach((name, index) => {
                 const option = document.createElement('option');
@@ -578,7 +578,7 @@
             renderCalendar();
         }
 
-        // --- LÓGICA DE HORÁRIOS ---
+        
         function updateHorarioOptions() {
             const selectedSpace = espacoSelect.value;
             for (const option of horarioSelect.options) {
@@ -606,10 +606,10 @@
             }
         }
 
-        // --- LÓGICA DOS MODAIS ---
+        
         function openDayModal(dateString) {
             eventForm.reset();
-            // Limpa feedback de validação ao abrir o modal
+            
             const feedbackEl = document.getElementById('form-validation-feedback');
             if (feedbackEl) {
                 feedbackEl.classList.add('hidden');
@@ -710,7 +710,7 @@
             });
         }
 
-        // --- LÓGICA DOS CARDS DE ESTATÍSTICAS ---
+        
         function renderListInModal(events, status) {
             const filterInput = document.getElementById('list-modal-filter-input');
             const futureEventsCheckbox = document.getElementById('future-events-filter-checkbox');
@@ -723,14 +723,14 @@
 
             let eventsToDisplay = [...events];
 
-            // Aplica os filtros apenas para a lista de aprovados
+            
             if (isApprovedList) {
-                // Filtro por mês
+                
                 if (selectedMonth) {
                     eventsToDisplay = eventsToDisplay.filter(event => event.date.startsWith(selectedMonth));
                 }
 
-                // Filtro de eventos futuros
+                
                 if (showOnlyFuture) {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0); // Normaliza a data de hoje para comparar apenas o dia
@@ -740,7 +740,7 @@
                     });
                 }
 
-                // Filtro por termo de busca
+                
                 if (searchTerm) {
                     eventsToDisplay = eventsToDisplay.filter(event => {
                         const date = new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -751,7 +751,7 @@
                 }
             }
             
-            listModalContent.innerHTML = ''; // Limpa o conteúdo anterior
+            listModalContent.innerHTML = ''; 
 
             if (eventsToDisplay.length === 0) {
                 listModalContent.innerHTML = `<div class="text-center text-sm text-gray-500 p-4">Nenhum evento encontrado para os filtros aplicados.</div>`;
@@ -799,13 +799,13 @@
             const baseEventList = allEvents.filter(event => event.status === status)
                                             .sort((a,b) => new Date(a.date) - new Date(b.date));
             
-            // Mostra/esconde e configura os filtros
+            
             if (isApprovedList) {
                 filterContainer.classList.remove('hidden');
                 filterInput.value = '';
                 futureEventsCheckbox.checked = false;
 
-                // Popula o filtro de mês
+                
                 const uniqueMonths = [...new Set(baseEventList.map(event => event.date.substring(0, 7)))];
                 monthFilterSelect.innerHTML = '<option value="">Todos os meses</option>';
                 uniqueMonths.forEach(monthYear => {
@@ -827,7 +827,7 @@
                 filterContainer.classList.add('hidden');
             }
             
-            // Renderização inicial
+            
             renderListInModal(baseEventList, status);
             openListModal();
         }
@@ -836,7 +836,7 @@
             listModalTitle.textContent = 'Espaços Utilizados';
             const approvedEvents = allEvents.filter(e => e.status === 'aprovado');
             
-            listModalContent.innerHTML = ''; // Limpa o conteúdo anterior
+            listModalContent.innerHTML = ''; 
             if (approvedEvents.length === 0) {
                 listModalContent.innerHTML = '<div class="text-center text-sm text-gray-500 p-4">Nenhum espaço sendo utilizado.</div>';
             } else {
@@ -851,13 +851,46 @@
             openListModal();
         }
 
-        // --- AÇÕES DE APROVAÇÃO ---
+        
         window.approveEvent = async (eventId) => {
             const eventRef = doc(db, "agendamentos", eventId);
             try {
+                
+                const eventSnap = await getDoc(eventRef);
+                if (!eventSnap.exists()) {
+                    console.error("Agendamento não encontrado!");
+                    return;
+                }
+                const eventData = eventSnap.data();
+
+                
                 await updateDoc(eventRef, { status: "aprovado" });
+
+                
+                const webhookPayload = {
+                    date: eventData.date,
+                    nome: eventData.nome,
+                    telefone: eventData.whatsapp,
+                    email: eventData.email,
+                    responsavelEmail: eventData.responsavelEmail,
+                    ministerio_grupo: eventData.ministerio,
+                    espaco_desejado: eventData.espaco,
+                    horario: eventData.horario,
+                    observacoes: eventData.observacoes,
+                    status: 'aprovado' 
+                };
+
+                
+                const approvalWebhookUrl = 'https://hook.us2.make.com/wxenm1dxtn7wgrxomq2vovs3dv8gk59n'; 
+                
+                await fetch(approvalWebhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(webhookPayload)
+                });
+
             } catch (error) {
-                console.error("Erro ao aprovar evento: ", error);
+                console.error("Erro ao aprovar evento e enviar notificação: ", error);
             }
         };
         
@@ -1051,6 +1084,8 @@
             dateSelectorContainer.classList.remove('open');
             toggleDateSelectorBtn.querySelector('svg').classList.remove('rotate-180');
         });
+
+        
         populateDateSelectors();
         updateDateSelectors();
         listenToEvents();
