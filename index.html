@@ -295,13 +295,16 @@
                                     <option>Outro</option>
                                 </select>
                             </div>
-                            <div>
-                                <label for="event-horario" class="text-xs font-medium text-gray-600">Horário</label>
-                                <select id="event-horario" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
-                                    <option value="" disabled selected>Selecione um horário</option>
-                                    <option>08h00 - 18h00</option>
-                                    <option>18h00 - 22h00</option>
-                                </select>
+                             <!-- MODIFICADO: Campo de horário agora tem Início e Fim -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label for="event-horario-inicio" class="text-xs font-medium text-gray-600">Início</label>
+                                    <input type="time" id="event-horario-inicio" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
+                                </div>
+                                <div>
+                                    <label for="event-horario-fim" class="text-xs font-medium text-gray-600">Término</label>
+                                    <input type="time" id="event-horario-fim" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
+                                </div>
                             </div>
                         </div>
                         <div><label for="event-observacoes" class="text-xs font-medium text-gray-600">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="form-input mt-1 w-full rounded-md shadow-sm text-sm"></textarea></div>
@@ -352,7 +355,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         
@@ -379,6 +382,7 @@
         let allEvents = [];
         let selectedDate = null;
         const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+        let eventsListenerUnsubscribe = null; // Variável para guardar a função de unsubscribe do listener
 
         
         const monthYearEl = document.getElementById('month-year');
@@ -409,8 +413,7 @@
         const eventForm = document.getElementById('event-form');
         const eventListEl = document.getElementById('event-list');
         const espacoSelect = document.getElementById('event-espaco');
-        const horarioSelect = document.getElementById('event-horario');
-
+        
         
         const loginModal = document.getElementById('login-modal');
         const openLoginModalBtn = document.getElementById('open-login-modal-btn');
@@ -432,8 +435,20 @@
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             updateAuthUI(user);
-            if (!eventModal.classList.contains('hidden')) {
-                updateEventList();
+
+            // Cancela o listener anterior para evitar duplicação
+            if (eventsListenerUnsubscribe) {
+                eventsListenerUnsubscribe();
+            }
+
+            if (user) {
+                // Se o usuário está logado (admin ou anônimo), inicia o listener
+                listenToEvents();
+            } else {
+                // Se não há usuário, faz o login anônimo. Isso vai disparar o onAuthStateChanged novamente.
+                signInAnonymously(auth).catch((error) => {
+                    console.error("Falha no login anônimo:", error);
+                });
             }
         });
 
@@ -577,35 +592,6 @@
             currentDate = new Date(selectedYear, selectedMonth, 1);
             renderCalendar();
         }
-
-        
-        function updateHorarioOptions() {
-            const selectedSpace = espacoSelect.value;
-            for (const option of horarioSelect.options) {
-                if (option.value) option.disabled = false;
-            }
-
-            if (!selectedSpace) {
-                horarioSelect.value = '';
-                return;
-            }
-
-            const dayEventsForSpace = allEvents.filter(event =>
-                event.date === selectedDate && event.espaco === selectedSpace
-            );
-            const bookedHorarios = dayEventsForSpace.map(event => event.horario);
-
-            for (const option of horarioSelect.options) {
-                if (bookedHorarios.includes(option.value)) {
-                    option.disabled = true;
-                }
-            }
-
-            if (horarioSelect.options[horarioSelect.selectedIndex]?.disabled) {
-                horarioSelect.value = '';
-            }
-        }
-
         
         function openDayModal(dateString) {
             eventForm.reset();
@@ -621,7 +607,6 @@
             modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
             
             updateEventList();
-            updateHorarioOptions();
             
             eventModal.classList.remove('hidden');
             setTimeout(() => {
@@ -661,9 +646,12 @@
 
             const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
 
-            dayEvents.sort((a, b) => (a.horario || "").localeCompare(b.horario || "")).forEach(event => {
+            dayEvents.sort((a, b) => (a.horarioInicio || "").localeCompare(b.horarioInicio || "")).forEach(event => {
                 const eventItem = document.createElement('div');
                 eventItem.className = 'bg-white p-3 rounded-lg border mb-2 shadow-sm';
+                
+                
+                const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
 
                 if (isUserAdmin) {
                     let statusBadge = event.status === 'aprovado' 
@@ -684,7 +672,7 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="font-semibold text-sm text-gray-800">${event.nome}</p>
-                                <p class="text-xs text-gray-500 mt-1">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${event.horario} - ${event.espaco}</p>
+                                <p class="text-xs text-gray-500 mt-1">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${timeDisplay} - ${event.espaco}</p>
                             </div>
                             ${statusBadge}
                         </div>
@@ -700,7 +688,7 @@
                     eventItem.innerHTML = `
                         <div class="flex justify-between items-center">
                             <div>
-                                <p class="font-semibold text-sm text-gray-800">${event.horario}</p>
+                                <p class="font-semibold text-sm text-gray-800">${timeDisplay}</p>
                                 <p class="text-xs text-gray-500">${event.espaco}</p>
                             </div>
                             ${statusBadge}
@@ -733,7 +721,7 @@
                 
                 if (showOnlyFuture) {
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Normaliza a data de hoje para comparar apenas o dia
+                    today.setHours(0, 0, 0, 0); 
                     eventsToDisplay = eventsToDisplay.filter(event => {
                         const eventDate = new Date(event.date + 'T00:00:00');
                         return eventDate >= today;
@@ -757,6 +745,7 @@
                 listModalContent.innerHTML = `<div class="text-center text-sm text-gray-500 p-4">Nenhum evento encontrado para os filtros aplicados.</div>`;
             } else {
                 listModalContent.innerHTML = eventsToDisplay.map(event => {
+                    const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
                     const actionButtons = status === 'pendente' ? `
                         <div class="flex items-center space-x-2 mt-3 pt-3 border-t">
                             <button onclick="window.approveEvent('${event.id}')" class="action-button bg-green-500 text-white hover:bg-green-600">Aprovar</button>
@@ -771,7 +760,7 @@
                         <div class="flex justify-between items-start">
                              <div>
                                 <p class="font-semibold text-sm text-gray-800">${event.nome}</p>
-                                <p class="text-xs text-gray-500 mt-1">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${event.horario} - ${event.espaco}</p>
+                                <p class="text-xs text-gray-500 mt-1">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${timeDisplay} - ${event.espaco}</p>
                             </div>
                         </div>
                         <div class="text-xs text-gray-600 mt-2 space-y-1 border-t pt-2">
@@ -840,13 +829,15 @@
             if (approvedEvents.length === 0) {
                 listModalContent.innerHTML = '<div class="text-center text-sm text-gray-500 p-4">Nenhum espaço sendo utilizado.</div>';
             } else {
-                listModalContent.innerHTML = approvedEvents.map(event => `
+                listModalContent.innerHTML = approvedEvents.map(event => {
+                    const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
+                    return `
                     <div class="bg-white p-3 rounded-lg border mb-2 shadow-sm">
                         <p class="font-semibold text-sm text-gray-800">${event.espaco}</p>
                         <p class="text-xs text-gray-500 mt-1">Reservado por <strong>${event.nome}</strong></p>
-                        <p class="text-xs text-gray-500">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${event.horario}</p>
+                        <p class="text-xs text-gray-500">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${timeDisplay}</p>
                     </div>
-                `).join('');
+                `}).join('');
             }
             openListModal();
         }
@@ -867,6 +858,7 @@
                 await updateDoc(eventRef, { status: "aprovado" });
 
                 
+                const timeDisplay = (eventData.horarioInicio && eventData.horarioFim) ? `${eventData.horarioInicio} às ${eventData.horarioFim}` : eventData.horario;
                 const webhookPayload = {
                     date: eventData.date,
                     nome: eventData.nome,
@@ -875,7 +867,7 @@
                     responsavelEmail: eventData.responsavelEmail,
                     ministerio_grupo: eventData.ministerio,
                     espaco_desejado: eventData.espaco,
-                    horario: eventData.horario,
+                    horario: timeDisplay,
                     observacoes: eventData.observacoes,
                     status: 'aprovado' 
                 };
@@ -917,7 +909,8 @@
                 { id: 'event-responsavel', name: 'Email do Responsável', type: 'email' },
                 { id: 'event-ministerio', name: 'Ministério / Grupo' },
                 { id: 'event-espaco', name: 'Espaço Desejado' },
-                { id: 'event-horario', name: 'Horário' }
+                { id: 'event-horario-inicio', name: 'Horário de Início' },
+                { id: 'event-horario-fim', name: 'Horário de Término' }
             ];
             let errors = [];
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -946,6 +939,14 @@
                     field.classList.remove('border-gray-300');
                 }
             });
+            
+            const horarioInicio = document.getElementById('event-horario-inicio').value;
+            const horarioFim = document.getElementById('event-horario-fim').value;
+            if (horarioInicio && horarioFim && horarioInicio >= horarioFim) {
+                errors.push('O "<strong>Horário de Término</strong>" deve ser posterior ao "<strong>Horário de Início</strong>".');
+                document.getElementById('event-horario-inicio').classList.add('border-red-500', 'ring-1', 'ring-red-500');
+                document.getElementById('event-horario-fim').classList.add('border-red-500', 'ring-1', 'ring-red-500');
+            }
 
             if (errors.length > 0) {
                 feedbackEl.innerHTML = errors.join('<br>');
@@ -962,22 +963,32 @@
                 responsavelEmail: document.getElementById('event-responsavel').value,
                 ministerio: document.getElementById('event-ministerio').value,
                 espaco: espacoSelect.value,
-                horario: horarioSelect.value,
+                horarioInicio: horarioInicio,
+                horarioFim: horarioFim,
                 observacoes: document.getElementById('event-observacoes').value,
                 createdAt: new Date().toISOString(),
                 status: 'pendente'
             };
             
-            const hasConflict = allEvents.some(event => 
-                event.date === fullEventData.date &&
-                event.espaco === fullEventData.espaco &&
-                event.horario === fullEventData.horario
-            );
+            const newStartTime = fullEventData.horarioInicio;
+            const newEndTime = fullEventData.horarioFim;
+
+            const hasConflict = allEvents.some(event => {
+                if (event.date === fullEventData.date && event.espaco === fullEventData.espaco) {
+                    const existingStartTime = event.horarioInicio;
+                    const existingEndTime = event.horarioFim;
+                    
+                    if (!existingStartTime || !existingEndTime) return false; // Ignora dados antigos sem o intervalo
+
+                    // Verifica sobreposição: (InícioA < FimB) E (FimA > InícioB)
+                    return newStartTime < existingEndTime && newEndTime > existingStartTime;
+                }
+                return false;
+            });
             
             if (hasConflict) {
-                feedbackEl.innerHTML = "Conflito de agendamento! Este espaço já foi solicitado neste horário.";
+                feedbackEl.innerHTML = "Conflito de agendamento! Este espaço já está reservado ou solicitado para um horário que se sobrepõe ao seu.";
                 feedbackEl.classList.remove('hidden');
-                updateHorarioOptions();
                 return;
             }
 
@@ -991,7 +1002,7 @@
                     email: fullEventData.email,
                     ministerio_grupo: fullEventData.ministerio,
                     espaco_desejado: fullEventData.espaco,
-                    horario: fullEventData.horario,
+                    horario: `${fullEventData.horarioInicio} às ${fullEventData.horarioFim}`,
                     observacoes: fullEventData.observacoes,
                     status: fullEventData.status
                 };
@@ -1011,7 +1022,8 @@
         }
 
         function listenToEvents() {
-            onSnapshot(query(eventsCollection), (snapshot) => {
+            // A função onSnapshot retorna uma função para cancelar o listener
+            eventsListenerUnsubscribe = onSnapshot(query(eventsCollection), (snapshot) => {
                 allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 
                 const approvedEvents = allEvents.filter(e => e.status === 'aprovado');
@@ -1026,7 +1038,6 @@
                 
                 if (!eventModal.classList.contains('hidden')) {
                     updateEventList();
-                    updateHorarioOptions();
                 }
 
                 
@@ -1053,8 +1064,6 @@
         closeModalBtn.addEventListener('click', closeDayModal);
         eventForm.addEventListener('submit', saveEventToDb);
         eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeDayModal(); });
-        espacoSelect.addEventListener('change', updateHorarioOptions);
-
         
         approvedCard.addEventListener('click', () => {
             if (currentUser && adminUIDs.includes(currentUser.uid)) {
@@ -1088,7 +1097,7 @@
         
         populateDateSelectors();
         updateDateSelectors();
-        listenToEvents();
+        
     </script>
 </body>
 </html>
