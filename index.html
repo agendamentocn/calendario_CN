@@ -295,7 +295,7 @@
                                     <option>Outro</option>
                                 </select>
                             </div>
-                             <!-- MODIFICADO: Campo de horário agora tem Início e Fim -->
+                             
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label for="event-horario-inicio" class="text-xs font-medium text-gray-600">Início</label>
@@ -436,16 +436,16 @@
             currentUser = user;
             updateAuthUI(user);
 
-            // Cancela o listener anterior para evitar duplicação
+            
             if (eventsListenerUnsubscribe) {
                 eventsListenerUnsubscribe();
             }
 
             if (user) {
-                // Se o usuário está logado (admin ou anônimo), inicia o listener
+                
                 listenToEvents();
             } else {
-                // Se não há usuário, faz o login anônimo. Isso vai disparar o onAuthStateChanged novamente.
+                
                 signInAnonymously(auth).catch((error) => {
                     console.error("Falha no login anônimo:", error);
                 });
@@ -858,7 +858,7 @@
                 await updateDoc(eventRef, { status: "aprovado" });
 
                 
-                const timeDisplay = (eventData.horarioInicio && eventData.horarioFim) ? `${eventData.horarioInicio} às ${eventData.horarioFim}` : eventData.horario;
+                // MODIFICADO: Envia horários separados
                 const webhookPayload = {
                     date: eventData.date,
                     nome: eventData.nome,
@@ -867,7 +867,8 @@
                     responsavelEmail: eventData.responsavelEmail,
                     ministerio_grupo: eventData.ministerio,
                     espaco_desejado: eventData.espaco,
-                    horario: timeDisplay,
+                    horario_inicio: eventData.horarioInicio, // Novo campo
+                    horario_fim: eventData.horarioFim,     // Novo campo
                     observacoes: eventData.observacoes,
                     status: 'aprovado' 
                 };
@@ -978,9 +979,9 @@
                     const existingStartTime = event.horarioInicio;
                     const existingEndTime = event.horarioFim;
                     
-                    if (!existingStartTime || !existingEndTime) return false; // Ignora dados antigos sem o intervalo
+                    if (!existingStartTime || !existingEndTime) return false; 
 
-                    // Verifica sobreposição: (InícioA < FimB) E (FimA > InícioB)
+                    
                     return newStartTime < existingEndTime && newEndTime > existingStartTime;
                 }
                 return false;
@@ -995,6 +996,7 @@
             try {
                 await addDoc(eventsCollection, fullEventData);
                 
+                // MODIFICADO: Envia horários separados
                 const webhookPayload = {
                     date: fullEventData.date,
                     nome: fullEventData.nome,
@@ -1002,7 +1004,8 @@
                     email: fullEventData.email,
                     ministerio_grupo: fullEventData.ministerio,
                     espaco_desejado: fullEventData.espaco,
-                    horario: `${fullEventData.horarioInicio} às ${fullEventData.horarioFim}`,
+                    horario_inicio: fullEventData.horarioInicio, // Novo campo
+                    horario_fim: fullEventData.horarioFim,     // Novo campo
                     observacoes: fullEventData.observacoes,
                     status: fullEventData.status
                 };
@@ -1022,7 +1025,7 @@
         }
 
         function listenToEvents() {
-            // A função onSnapshot retorna uma função para cancelar o listener
+            
             eventsListenerUnsubscribe = onSnapshot(query(eventsCollection), (snapshot) => {
                 allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 
