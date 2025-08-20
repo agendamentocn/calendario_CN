@@ -382,7 +382,7 @@
         let allEvents = [];
         let selectedDate = null;
         const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-        let eventsListenerUnsubscribe = null; // Variável para guardar a função de unsubscribe do listener
+        let eventsListenerUnsubscribe = null; 
 
         
         const monthYearEl = document.getElementById('month-year');
@@ -858,7 +858,7 @@
                 await updateDoc(eventRef, { status: "aprovado" });
 
                 
-                // MODIFICADO: Envia horários separados
+                
                 const webhookPayload = {
                     date: eventData.date,
                     nome: eventData.nome,
@@ -867,14 +867,15 @@
                     responsavelEmail: eventData.responsavelEmail,
                     ministerio_grupo: eventData.ministerio,
                     espaco_desejado: eventData.espaco,
-                    horario_inicio: eventData.horarioInicio, // Novo campo
-                    horario_fim: eventData.horarioFim,     // Novo campo
+                    horario_inicio: eventData.horarioInicio, 
+                    horario_fim: eventData.horarioFim,     
                     observacoes: eventData.observacoes,
                     status: 'aprovado' 
                 };
 
                 
-                const approvalWebhookUrl = 'https://hook.us2.make.com/wxenm1dxtn7wgrxomq2vovs3dv8gk59n'; 
+                // MODIFICADO: URL do Webhook de aprovação atualizada
+                const approvalWebhookUrl = 'https://hook.us2.make.com/f4fctnqn3kf58d5nrtfp8vuriiojfvm8'; 
                 
                 await fetch(approvalWebhookUrl, {
                     method: 'POST',
@@ -996,7 +997,7 @@
             try {
                 await addDoc(eventsCollection, fullEventData);
                 
-                // MODIFICADO: Envia horários separados
+                
                 const webhookPayload = {
                     date: fullEventData.date,
                     nome: fullEventData.nome,
@@ -1004,8 +1005,8 @@
                     email: fullEventData.email,
                     ministerio_grupo: fullEventData.ministerio,
                     espaco_desejado: fullEventData.espaco,
-                    horario_inicio: fullEventData.horarioInicio, // Novo campo
-                    horario_fim: fullEventData.horarioFim,     // Novo campo
+                    horario_inicio: fullEventData.horarioInicio, 
+                    horario_fim: fullEventData.horarioFim,     
                     observacoes: fullEventData.observacoes,
                     status: fullEventData.status
                 };
