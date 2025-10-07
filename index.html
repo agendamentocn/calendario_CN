@@ -309,6 +309,32 @@
                         </div>
                         <div><label for="event-observacoes" class="text-xs font-medium text-gray-600">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="form-input mt-1 w-full rounded-md shadow-sm text-sm"></textarea></div>
                         
+                        <!-- Seção de Evento Recorrente para Admin -->
+                        <div id="admin-recurring-section" class="hidden mt-4 pt-4 border-t border-gray-200">
+                            <h4 class="font-semibold text-gray-700 mb-3 text-sm">Agendamento Recorrente (Admin)</h4>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="recurring-event-checkbox" class="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary">
+                                <span class="text-sm text-gray-700">Criar evento recorrente</span>
+                            </label>
+                            <div id="recurring-options" class="hidden mt-3 space-y-3 p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <label for="recurring-end-date" class="text-xs font-medium text-gray-600">Repetir até a data</label>
+                                    <input type="date" id="recurring-end-date" class="form-input mt-1 w-full rounded-md shadow-sm text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-medium text-gray-600 d-block">Nos dias da semana</label>
+                                    <div id="recurring-days-container" class="grid grid-cols-4 gap-x-4 gap-y-2 mt-2">
+                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="1" class="recurring-day-checkbox h-4 w-4 rounded text-brand-primary focus:ring-brand-primary border-gray-300"><span>Seg</span></label>
+                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="2" class="recurring-day-checkbox h-4 w-4 rounded text-brand-primary focus:ring-brand-primary border-gray-300"><span>Ter</span></label>
+                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="3" class="recurring-day-checkbox h-4 w-4 rounded text-brand-primary focus:ring-brand-primary border-gray-300"><span>Qua</span></label>
+                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="4" class="recurring-day-checkbox h-4 w-4 rounded text-brand-primary focus:ring-brand-primary border-gray-300"><span>Qui</span></label>
+                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="5" class="recurring-day-checkbox h-4 w-4 rounded text-brand-primary focus:ring-brand-primary border-gray-300"><span>Sex</span></label>
+                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="6" class="recurring-day-checkbox h-4 w-4 rounded text-brand-primary focus:ring-brand-primary border-gray-300"><span>Sáb</span></label>
+                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="0" class="recurring-day-checkbox h-4 w-4 rounded text-brand-primary focus:ring-brand-primary border-gray-300"><span>Dom</span></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div id="form-validation-feedback" class="text-sm text-red-600 bg-red-100 p-3 rounded-lg hidden mt-4"></div>
 
@@ -413,6 +439,11 @@
         const eventForm = document.getElementById('event-form');
         const eventListEl = document.getElementById('event-list');
         const espacoSelect = document.getElementById('event-espaco');
+
+        // Novos elementos para evento recorrente
+        const adminRecurringSection = document.getElementById('admin-recurring-section');
+        const recurringEventCheckbox = document.getElementById('recurring-event-checkbox');
+        const recurringOptions = document.getElementById('recurring-options');
         
         
         const loginModal = document.getElementById('login-modal');
@@ -605,6 +636,11 @@
             selectedDate = dateString;
             const date = new Date(dateString + 'T00:00:00');
             modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+            const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
+            adminRecurringSection.classList.toggle('hidden', !isUserAdmin);
+            recurringEventCheckbox.checked = false;
+            recurringOptions.classList.add('hidden');
             
             updateEventList();
             
@@ -955,10 +991,11 @@
                 feedbackEl.classList.remove('hidden');
                 return; 
             }
-            
-            
-            const fullEventData = {
-                date: selectedDate,
+
+            const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
+            const isRecurring = recurringEventCheckbox.checked && isUserAdmin;
+
+            const eventDataTemplate = {
                 nome: document.getElementById('event-name').value.trim(),
                 whatsapp: document.getElementById('event-whatsapp').value,
                 email: document.getElementById('event-email').value,
@@ -972,56 +1009,123 @@
                 status: 'pendente'
             };
             
-            const newStartTime = fullEventData.horarioInicio;
-            const newEndTime = fullEventData.horarioFim;
+            if (isRecurring) {
+                const recurringEndDateValue = document.getElementById('recurring-end-date').value;
+                const selectedDaysCheckboxes = document.querySelectorAll('.recurring-day-checkbox:checked');
+                const recurringDays = Array.from(selectedDaysCheckboxes).map(cb => parseInt(cb.value));
 
-            const hasConflict = allEvents.some(event => {
-                if (event.date === fullEventData.date && event.espaco === fullEventData.espaco) {
-                    const existingStartTime = event.horarioInicio;
-                    const existingEndTime = event.horarioFim;
-                    
-                    if (!existingStartTime || !existingEndTime) return false; 
-
-                    
-                    return newStartTime < existingEndTime && newEndTime > existingStartTime;
+                if (recurringDays.length === 0) {
+                    feedbackEl.innerHTML = "Por favor, selecione pelo menos um dia da semana para a recorrência.";
+                    feedbackEl.classList.remove('hidden');
+                    return;
                 }
-                return false;
-            });
-            
-            if (hasConflict) {
-                feedbackEl.innerHTML = "Conflito de agendamento! Este espaço já está reservado ou solicitado para um horário que se sobrepõe ao seu.";
-                feedbackEl.classList.remove('hidden');
-                return;
-            }
 
-            try {
-                await addDoc(eventsCollection, fullEventData);
+                if (!recurringEndDateValue) {
+                    feedbackEl.innerHTML = "Por favor, selecione uma data final para a recorrência.";
+                    feedbackEl.classList.remove('hidden');
+                    return;
+                }
                 
-                
-                const webhookPayload = {
-                    date: fullEventData.date,
-                    nome: fullEventData.nome,
-                    telefone: fullEventData.whatsapp,
-                    email: fullEventData.email,
-                    ministerio_grupo: fullEventData.ministerio,
-                    espaco_desejado: fullEventData.espaco,
-                    horario_inicio: fullEventData.horarioInicio, 
-                    horario_fim: fullEventData.horarioFim,     
-                    observacoes: fullEventData.observacoes,
-                    status: fullEventData.status
-                };
+                const startDate = new Date(selectedDate + 'T00:00:00');
+                const endDate = new Date(recurringEndDateValue + 'T00:00:00');
 
-                const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
-                await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(webhookPayload)
+                if (endDate < startDate) {
+                    feedbackEl.innerHTML = "A data final da recorrência não pode ser anterior à data de início da solicitação.";
+                    feedbackEl.classList.remove('hidden');
+                    return;
+                }
+
+                let datesToCreate = [];
+                let loopDate = new Date(startDate);
+                while (loopDate <= endDate) {
+                    if (recurringDays.includes(loopDate.getDay())) {
+                        datesToCreate.push(loopDate.toISOString().split('T')[0]);
+                    }
+                    loopDate.setDate(loopDate.getDate() + 1);
+                }
+
+                if (datesToCreate.length === 0) {
+                    feedbackEl.innerHTML = `Nenhuma data correspondente aos dias da semana selecionados foi encontrada no período.`;
+                    feedbackEl.classList.remove('hidden');
+                    return;
+                }
+
+                for (const dateString of datesToCreate) {
+                    const hasConflict = allEvents.some(event => {
+                        if (event.date === dateString && event.espaco === eventDataTemplate.espaco) {
+                            const existingStartTime = event.horarioInicio;
+                            const existingEndTime = event.horarioFim;
+                            if (!existingStartTime || !existingEndTime) return false;
+                            return eventDataTemplate.horarioInicio < existingEndTime && eventDataTemplate.horarioFim > existingStartTime;
+                        }
+                        return false;
+                    });
+                    if (hasConflict) {
+                        feedbackEl.innerHTML = `Conflito de agendamento encontrado para a data ${new Date(dateString+'T00:00:00').toLocaleDateString('pt-BR')}. Nenhuma solicitação foi criada.`;
+                        feedbackEl.classList.remove('hidden');
+                        return;
+                    }
+                }
+
+                try {
+                    const creationPromises = datesToCreate.map(dateString => {
+                        const eventData = { ...eventDataTemplate, date: dateString };
+                        return addDoc(eventsCollection, eventData);
+                    });
+                    await Promise.all(creationPromises);
+                    closeDayModal();
+                } catch (error) {
+                    console.error("Erro ao salvar eventos recorrentes: ", error);
+                    feedbackEl.innerHTML = "Ocorreu um erro ao salvar os eventos recorrentes. Tente novamente.";
+                    feedbackEl.classList.remove('hidden');
+                }
+
+            } else {
+                const hasConflict = allEvents.some(event => {
+                    if (event.date === selectedDate && event.espaco === eventDataTemplate.espaco) {
+                        const existingStartTime = event.horarioInicio;
+                        const existingEndTime = event.horarioFim;
+                        if (!existingStartTime || !existingEndTime) return false; 
+                        return eventDataTemplate.horarioInicio < existingEndTime && eventDataTemplate.horarioFim > existingStartTime;
+                    }
+                    return false;
                 });
-                closeDayModal();
-            } catch (error) {
-                console.error("Erro ao salvar solicitação: ", error);
-                feedbackEl.innerHTML = "Ocorreu um erro ao salvar a solicitação. Tente novamente.";
-                feedbackEl.classList.remove('hidden');
+                
+                if (hasConflict) {
+                    feedbackEl.innerHTML = "Conflito de agendamento! Este espaço já está reservado ou solicitado para um horário que se sobrepõe ao seu.";
+                    feedbackEl.classList.remove('hidden');
+                    return;
+                }
+
+                try {
+                    const fullEventData = { ...eventDataTemplate, date: selectedDate };
+                    await addDoc(eventsCollection, fullEventData);
+                    
+                    const webhookPayload = {
+                        date: fullEventData.date,
+                        nome: fullEventData.nome,
+                        telefone: fullEventData.whatsapp,
+                        email: fullEventData.email,
+                        ministerio_grupo: fullEventData.ministerio,
+                        espaco_desejado: fullEventData.espaco,
+                        horario_inicio: fullEventData.horarioInicio, 
+                        horario_fim: fullEventData.horarioFim,     
+                        observacoes: fullEventData.observacoes,
+                        status: fullEventData.status
+                    };
+
+                    const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
+                    await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(webhookPayload)
+                    });
+                    closeDayModal();
+                } catch (error) {
+                    console.error("Erro ao salvar solicitação: ", error);
+                    feedbackEl.innerHTML = "Ocorreu um erro ao salvar a solicitação. Tente novamente.";
+                    feedbackEl.classList.remove('hidden');
+                }
             }
         }
 
@@ -1098,6 +1202,10 @@
             toggleDateSelectorBtn.querySelector('svg').classList.remove('rotate-180');
         });
 
+        recurringEventCheckbox.addEventListener('change', () => {
+            recurringOptions.classList.toggle('hidden', !recurringEventCheckbox.checked);
+        });
+
         
         populateDateSelectors();
         updateDateSelectors();
@@ -1105,3 +1213,4 @@
     </script>
 </body>
 </html>
+
