@@ -2,7 +2,6 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/png" href="image/channels4_profile.jpg />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Agendamento com Aprovação</title>
     
@@ -441,7 +440,7 @@
         const eventListEl = document.getElementById('event-list');
         const espacoSelect = document.getElementById('event-espaco');
 
-        // Novos elementos para evento recorrente
+        
         const adminRecurringSection = document.getElementById('admin-recurring-section');
         const recurringEventCheckbox = document.getElementById('recurring-event-checkbox');
         const recurringOptions = document.getElementById('recurring-options');
@@ -911,7 +910,6 @@
                 };
 
                 
-                // MODIFICADO: URL do Webhook de aprovação atualizada
                 const approvalWebhookUrl = 'https://hook.us2.make.com/f4fctnqn3kf58d5nrtfp8vuriiojfvm8'; 
                 
                 await fetch(approvalWebhookUrl, {
@@ -1074,10 +1072,34 @@
                         return addDoc(eventsCollection, eventData);
                     });
                     await Promise.all(creationPromises);
+                    
+                    // Enviar webhook para cada evento criado
+                    const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
+                    const webhookPromises = datesToCreate.map(dateString => {
+                         const webhookPayload = {
+                            date: dateString,
+                            nome: eventDataTemplate.nome,
+                            telefone: eventDataTemplate.whatsapp,
+                            email: eventDataTemplate.email,
+                            ministerio_grupo: eventDataTemplate.ministerio,
+                            espaco_desejado: eventDataTemplate.espaco,
+                            horario_inicio: eventDataTemplate.horarioInicio, 
+                            horario_fim: eventDataTemplate.horarioFim,     
+                            observacoes: eventDataTemplate.observacoes,
+                            status: eventDataTemplate.status
+                        };
+                        return fetch(webhookUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(webhookPayload)
+                        });
+                    });
+                    await Promise.all(webhookPromises);
+
                     closeDayModal();
                 } catch (error) {
-                    console.error("Erro ao salvar eventos recorrentes: ", error);
-                    feedbackEl.innerHTML = "Ocorreu um erro ao salvar os eventos recorrentes. Tente novamente.";
+                    console.error("Erro ao salvar ou notificar eventos recorrentes: ", error);
+                    feedbackEl.innerHTML = "Ocorreu um erro ao salvar ou notificar os eventos recorrentes. Tente novamente.";
                     feedbackEl.classList.remove('hidden');
                 }
 
