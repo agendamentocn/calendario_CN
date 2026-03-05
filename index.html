@@ -1,1242 +1,1258 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Agendamento com Aprovação</title>
-    
-    <!-- Ícone da página adicionado aqui -->
-    <link rel="icon" href="image/channels4_profile.jpg" type="image/jpeg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Agendamento com Aprovação</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
-    <script>
-        
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'brand-primary': '#2563EB', // blue-600
-                        'brand-secondary': '#60A5FA', // blue-400
-                        'brand-light': '#EFF6FF',     // blue-50
-                        'brand-dark': '#1E3A8A',      // blue-800
-                    }
-                }
+  <link rel="icon" href="image/channels4_profile.jpg" type="image/jpeg">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            'brand-primary': '#3B82F6',
+            'brand-secondary': '#60A5FA',
+            'brand-dark': '#1E3A8A',
+            slate: {
+              850: '#151e2e',
+              950: '#0a0f1c',
             }
+          },
+          animation: {
+            'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'blob': 'blob 7s infinite',
+          },
+          keyframes: {
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(15px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            blob: {
+              '0%': { transform: 'translate(0px, 0px) scale(1)' },
+              '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+              '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+              '100%': { transform: 'translate(0px, 0px) scale(1)' },
+            }
+          }
         }
-    </script>
-    <style>
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            background-color: #111827; /* gray-900 */
-        }
-        .fade-in {
-            animation: fadeIn 0.6s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .modal-overlay {
-            transition: opacity 0.3s ease;
-            background-color: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-        }
-        .modal-content {
-            transition: transform 0.3s ease, opacity 0.3s ease;
-        }
-        
-        #event-list::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #list-modal-content::-webkit-scrollbar {
-            width: 6px;
-        }
-        #event-list::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track, #list-modal-content::-webkit-scrollbar-track {
-            background: #1F2937; /* gray-800 */
-            border-radius: 10px;
-        }
-        #event-list::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb, #list-modal-content::-webkit-scrollbar-thumb {
-            background: #4B5563; /* gray-600 */
-            border-radius: 10px;
-        }
-        #event-list::-webkit-scrollbar-thumb:hover, .modal-content::-webkit-scrollbar-thumb:hover, #list-modal-content::-webkit-scrollbar-thumb:hover {
-            background: #6B7280; /* gray-500 */
-        }
-        
-        select option:disabled { color: #9ca3af; }
-        .action-button {
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .action-button:hover {
-            transform: scale(1.05);
-        }
-        
-        .card-interactive {
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-        }
-        .card-interactive:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px -5px rgb(96 165 250 / 0.2);
-        }
-        .input-group {
-            position: relative;
-        }
-        .input-icon {
-            position: absolute;
-            left: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #9ca3af;
-        }
-        .input-field {
-            padding-left: 2.5rem;
-        }
-        
-        #date-selector-container {
-            transition: all 0.3s ease-in-out;
-            max-height: 0;
-            overflow: hidden;
-        }
-        #date-selector-container.open {
-            max-height: 500px; 
-            padding-top: 1rem;
-            margin-top: 1rem;
-            border-top: 1px solid #374151; /* gray-700 */
-        }
-        
-        #toggle-date-selector-btn svg {
-            transition: transform 0.3s;
-        }
-        
-        .form-input {
-             background-color: #1F2937; /* gray-800 */
-             border-color: #4B5563; /* gray-600 */
-             color: #F9FAFB; /* gray-50 */
-             transition: all 0.2s ease;
-        }
-        .form-input::placeholder {
-            color: #6B7280; /* gray-500 */
-        }
-        .form-input:focus {
-            --tw-ring-color: rgb(96 165 250 / 0.5); /* blue-400 */
-            border-color: #60A5FA; /* blue-400 */
-            box-shadow: 0 0 0 2px var(--tw-ring-color);
-        }
-        .btn-primary {
-            background-image: linear-gradient(to right, #3B82F6, #1D4ED8); /* blue-500 to blue-800 */
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px -5px rgb(59 130 246 / 0.4);
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 7px 20px -5px rgb(59 130 246 / 0.5);
-        }
-    </style>
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0a0f1c; /* Slate 950 */
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    
+    /* Background Glows */
+    .bg-glow {
+      position: fixed;
+      top: -10%; left: 50%;
+      width: 100vw; height: 50vh;
+      background: radial-gradient(circle, rgba(37,99,235,0.08) 0%, rgba(10,15,28,0) 70%);
+      transform: translateX(-50%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .modal-overlay {
+      background-color: rgba(5, 8, 15, 0.7);
+      backdrop-filter: blur(8px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .modal-content { 
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+    }
+
+    /* Scrollbars customizadas */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    select option:disabled { color: #64748b; }
+
+    /* Inputs modernos */
+    .form-input {
+      background-color: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      color: #f8fafc;
+      transition: all 0.25s ease;
+      outline: none;
+    }
+    .form-input::placeholder { color: #64748b; }
+    .form-input:focus {
+      border-color: #3b82f6;
+      background-color: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Botão Primário com Gradiente */
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.3);
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.4);
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .card-interactive {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    .card-interactive:hover {
+      transform: translateY(-5px);
+      border-color: rgba(96, 165, 250, 0.4);
+      box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.15);
+    }
+
+    #date-selector-container {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+    #date-selector-container.open {
+      max-height: 200px;
+      opacity: 1;
+      padding-top: 1.25rem;
+      margin-top: 1rem;
+      border-top: 1px solid rgba(51, 65, 85, 0.5);
+    }
+  </style>
 </head>
-<body class="p-4 md:p-8 text-gray-300">
-    <div class="relative w-full max-w-4xl mx-auto">
-        
-        <div id="auth-container" class="absolute top-0 right-0 text-right z-20">
-            <button id="open-login-modal-btn" class="btn-primary text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                Login Admin
-            </button>
-            <div id="user-status" class="hidden bg-gray-800/80 backdrop-blur-sm p-2 rounded-lg shadow-md flex items-center gap-2">
-                <p class="text-sm font-semibold text-brand-secondary">Admin Logado</p>
-                <button id="logout-btn" class="text-xs text-red-400 hover:underline font-semibold">Sair</button>
-            </div>
-        </div>
 
-        
-        <div class="text-center pt-16 sm:pt-10 mb-10 fade-in">
-            <h1 class="text-3xl md:text-4xl font-bold text-blue-300">Sistema de Agendamento</h1>
-            <p class="text-gray-400 mt-2">Gerencie solicitações de espaços com um fluxo de aprovação simples e eficiente.</p>
-        </div>
-        
-        
-        <div id="stats-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 my-10 fade-in hidden" style="animation-delay: 0.2s;">
-            <div id="approved-card" class="bg-gray-800 p-5 rounded-xl shadow-lg shadow-blue-900/50 flex items-center space-x-4 border border-gray-700">
-                <div class="bg-green-900/50 p-3 rounded-full"><svg class="w-6 h-6 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div>
-                <div><p id="approved-events-count" class="text-2xl font-bold text-gray-100">0</p><p class="text-sm text-gray-400">Aprovados</p></div>
-            </div>
-            <div id="pending-card" class="bg-gray-800 p-5 rounded-xl shadow-lg shadow-blue-900/50 flex items-center space-x-4 border border-gray-700">
-                <div class="bg-yellow-900/50 p-3 rounded-full"><svg class="w-6 h-6 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                <div><p id="pending-events-count" class="text-2xl font-bold text-gray-100">0</p><p class="text-sm text-gray-400">Pendentes</p></div>
-            </div>
-            <div id="spaces-card" class="bg-gray-800 p-5 rounded-xl shadow-lg shadow-blue-900/50 flex items-center space-x-4 border border-gray-700">
-                <div class="bg-blue-900/50 p-3 rounded-full"><svg class="w-6 h-6 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
-                <div><p id="spaces-count" class="text-2xl font-bold text-gray-100">0</p><p class="text-sm text-gray-400">Espaços Utilizados</p></div>
-            </div>
-        </div>
+<body class="p-4 md:p-8 relative selection:bg-brand-primary selection:text-white">
+  <!-- Fundo com Glow -->
+  <div class="bg-glow"></div>
+  <div class="fixed top-0 left-20 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob pointer-events-none"></div>
+  <div class="fixed top-20 right-20 w-72 h-72 bg-indigo-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000 pointer-events-none"></div>
 
-        
-        <div id="user-instructions" class="my-10 p-6 bg-gray-800 text-center rounded-xl fade-in hidden" style="animation-delay: 0.2s;">
-            <p class="text-blue-300">Para agendar o uso de algum dos nossos espaços, selecione a data de interesse abaixo, e, em seguida, preencha o formulário com todas informações necessárias.</p>
+  <div class="relative w-full max-w-5xl mx-auto z-10">
+    
+    <!-- Top Bar -->
+    <div id="auth-container" class="absolute top-0 right-0 z-20">
+      <button id="open-login-modal-btn" class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 backdrop-blur-md border border-slate-700/50 px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg">
+        Admin Access
+      </button>
+      <div id="user-status" class="hidden bg-slate-800/90 backdrop-blur-md border border-slate-700 px-4 py-2 rounded-xl shadow-xl flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+          <p class="text-sm font-medium text-slate-200">Admin</p>
         </div>
-
-        
-        <div class="w-full bg-gray-800 rounded-2xl shadow-lg shadow-black/20 p-4 sm:p-6 fade-in" style="animation-delay: 0.3s;">
-            <div class="flex items-center justify-between">
-                <button id="prev-month" class="p-2 rounded-full hover:bg-gray-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-                
-                
-                <button id="toggle-date-selector-btn" class="flex items-center gap-2 text-base sm:text-lg font-semibold text-blue-300 text-center capitalize hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors">
-                    <span id="month-year"></span>
-                    <svg class="w-5 h-5 text-gray-300 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
-                </button>
-
-                <button id="next-month" class="p-2 rounded-full hover:bg-gray-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
-            </div>
-
-            
-            <div id="date-selector-container">
-                <div class="bg-black/20 p-4 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4">
-                    <button id="today-btn" class="w-full sm:w-auto text-sm font-semibold text-brand-primary hover:text-brand-secondary transition-colors px-4 py-2 rounded-md bg-gray-700 border border-gray-600">Hoje</button>
-                    <div class="w-full sm:w-px sm:h-6 bg-gray-600"></div>
-                    <div class="w-full flex flex-col sm:flex-row sm:items-center gap-3">
-                        <label for="month-select" class="text-sm font-medium text-gray-300 hidden sm:block">Ir para:</label>
-                        <select id="month-select" class="form-input w-full sm:w-auto shadow-sm text-sm focus:ring-brand-primary focus:border-brand-primary p-2"></select>
-                        <select id="year-select" class="form-input w-full sm:w-auto shadow-sm text-sm focus:ring-brand-primary focus:border-brand-primary p-2"></select>
-                    </div>
-                    <button id="go-to-date-btn" class="btn-primary w-full sm:w-auto text-white p-2 rounded-lg shadow flex items-center justify-center">
-                        <span class="sm:hidden">Ir para Data</span>
-                        <svg class="hidden sm:block w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                           <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 my-4">
-                <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
-            </div>
-            <div id="calendar-days" class="grid grid-cols-7 gap-y-1"></div>
-        </div>
+        <div class="w-px h-4 bg-slate-600"></div>
+        <button id="logout-btn" class="text-sm text-red-400 hover:text-red-300 font-medium transition-colors">Sair</button>
+      </div>
     </div>
 
-    
-    <div id="login-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
-        <div class="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-sm modal-content">
-            <h3 class="text-xl font-bold text-gray-100 text-center mb-2">Login de Administrador</h3>
-            <p class="text-sm text-gray-400 text-center mb-6">Acesse para gerenciar as solicitações.</p>
-            <form id="login-form">
-                <div class="space-y-4">
-                    <div class="input-group">
-                         <svg class="input-icon w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm0 0c0 1.657 1.007 3 2.25 3S21 13.657 21 12a9 9 0 10-2.636 6.364M16.5 12V8.25" /></svg>
-                        <input type="email" id="login-email" class="form-input input-field mt-1 w-full rounded-md shadow-sm text-sm" placeholder="Email" required>
-                    </div>
-                    <div class="input-group">
-                        <svg class="input-icon w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                        <input type="password" id="login-password" class="form-input input-field mt-1 w-full rounded-md shadow-sm text-sm" placeholder="Senha" required>
-                    </div>
-                </div>
-                <p id="login-feedback" class="text-xs mt-3 text-center h-4"></p>
-                <div class="mt-6 flex space-x-4">
-                     <button type="button" id="close-login-modal-btn" class="w-full bg-gray-600 text-gray-200 py-2 px-4 rounded-lg hover:bg-gray-500 font-semibold">Cancelar</button>
-                    <button type="submit" id="login-submit-btn" class="w-full btn-primary text-white py-2 px-4 rounded-lg font-semibold flex items-center justify-center">Entrar</button>
-                </div>
-            </form>
-        </div>
+    <!-- Header -->
+    <div class="text-center pt-20 sm:pt-16 mb-12 animate-fade-in-up">
+      <div class="inline-flex items-center justify-center p-3 bg-blue-500/10 rounded-2xl mb-4 border border-blue-500/20">
+        <ion-icon name="calendar-clear" class="text-3xl text-brand-secondary"></ion-icon>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500">
+        Reserva de Espaços
+      </h1>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto font-medium">Solicite o uso de nossos ambientes com facilidade e acompanhe a aprovação em tempo real.</p>
     </div>
 
-    
-    <div id="event-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
-        <div class="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-3xl modal-content opacity-0 transform -translate-y-5 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h3 id="modal-title" class="text-xl font-bold text-gray-100"></h3>
-                    <p class="text-sm text-gray-400">Visualize e gerencie as solicitações para esta data.</p>
-                </div>
-                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
-            </div>
-            
-            <div class="grid md:grid-cols-2 gap-8">
-                
-                <div>
-                    <h4 class="font-semibold text-gray-200 mb-3 flex items-center"><span class="w-2 h-2 bg-brand-primary rounded-full mr-2"></span>Solicitações</h4>
-                    <div id="event-list" class="space-y-3 pr-2 max-h-80 overflow-y-auto">
-                        
-                    </div>
-                </div>
-                
-                
-                <div>
-                    <h4 class="font-semibold text-gray-200 mb-3">+ Nova Solicitação</h4>
-                    <form id="event-form" class="space-y-3" novalidate>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div><label for="event-name" class="text-xs font-medium text-gray-300">Nome</label><input type="text" id="event-name" placeholder="Nome completo" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
-                            <div><label for="event-whatsapp" class="text-xs font-medium text-gray-300">WhatsApp</label><input type="text" id="event-whatsapp" placeholder="(00) 00000-0000" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div><label for="event-email" class="text-xs font-medium text-gray-300">Email</label><input type="email" id="event-email" placeholder="email@exemplo.com" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
-                            <div><label for="event-responsavel" class="text-xs font-medium text-gray-300">Email do Responsável</label><input type="email" id="event-responsavel" placeholder="responsavel@exemplo.com" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
-                        </div>
-                        <div><label for="event-ministerio" class="text-xs font-medium text-gray-300">Ministério / Grupo</label><input type="text" id="event-ministerio" placeholder="Nome do ministério ou grupo" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required></div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label for="event-espaco" class="text-xs font-medium text-gray-300">Espaço Desejado</label>
-                                <select id="event-espaco" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
-                                    <option value="" disabled selected>Selecione um espaço</option>
-                                    <option>Lounge</option>
-                                    <option>Templo</option>
-                                    <option>Sala Alta para até 25 pessoas</option>
-                                    <option>Sala ID para até 15 pessoas</option>
-                                    <option>Reserva de Data para Cantina</option>
-                                    <option>Outro</option>
-                                </select>
-                            </div>
-                             
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label for="event-horario-inicio" class="text-xs font-medium text-gray-300">Início</label>
-                                    <input type="time" id="event-horario-inicio" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
-                                </div>
-                                <div>
-                                    <label for="event-horario-fim" class="text-xs font-medium text-gray-300">Término</label>
-                                    <input type="time" id="event-horario-fim" class="form-input mt-1 w-full rounded-md shadow-sm text-sm" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div><label for="event-observacoes" class="text-xs font-medium text-gray-300">Observações</label><textarea id="event-observacoes" rows="2" placeholder="Adicione observações sobre o evento..." class="form-input mt-1 w-full rounded-md shadow-sm text-sm"></textarea></div>
-                        
-                        <!-- Seção de Evento Recorrente para Admin -->
-                        <div id="admin-recurring-section" class="hidden mt-4 pt-4 border-t border-gray-700">
-                            <h4 class="font-semibold text-gray-200 mb-3 text-sm">Agendamento Recorrente (Admin)</h4>
-                            <label class="flex items-center space-x-3 cursor-pointer">
-                                <input type="checkbox" id="recurring-event-checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-brand-primary focus:ring-brand-primary">
-                                <span class="text-sm text-gray-200">Criar evento recorrente</span>
-                            </label>
-                            <div id="recurring-options" class="hidden mt-3 space-y-3 p-3 bg-gray-900/50 rounded-lg">
-                                <div>
-                                    <label for="recurring-end-date" class="text-xs font-medium text-gray-300">Repetir até a data</label>
-                                    <input type="date" id="recurring-end-date" class="form-input mt-1 w-full rounded-md shadow-sm text-sm">
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-300 d-block">Nos dias da semana</label>
-                                    <div id="recurring-days-container" class="grid grid-cols-4 gap-x-4 gap-y-2 mt-2">
-                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="1" class="recurring-day-checkbox h-4 w-4 rounded bg-gray-700 text-brand-primary focus:ring-brand-primary border-gray-500"><span>Seg</span></label>
-                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="2" class="recurring-day-checkbox h-4 w-4 rounded bg-gray-700 text-brand-primary focus:ring-brand-primary border-gray-500"><span>Ter</span></label>
-                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="3" class="recurring-day-checkbox h-4 w-4 rounded bg-gray-700 text-brand-primary focus:ring-brand-primary border-gray-500"><span>Qua</span></label>
-                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="4" class="recurring-day-checkbox h-4 w-4 rounded bg-gray-700 text-brand-primary focus:ring-brand-primary border-gray-500"><span>Qui</span></label>
-                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="5" class="recurring-day-checkbox h-4 w-4 rounded bg-gray-700 text-brand-primary focus:ring-brand-primary border-gray-500"><span>Sex</span></label>
-                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="6" class="recurring-day-checkbox h-4 w-4 rounded bg-gray-700 text-brand-primary focus:ring-brand-primary border-gray-500"><span>Sáb</span></label>
-                                        <label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" value="0" class="recurring-day-checkbox h-4 w-4 rounded bg-gray-700 text-brand-primary focus:ring-brand-primary border-gray-500"><span>Dom</span></label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="form-validation-feedback" class="text-sm text-red-400 bg-red-900/50 p-3 rounded-lg hidden mt-4"></div>
-
-                        <button id="save-event-btn" type="submit" class="w-full btn-primary text-white py-2.5 px-4 rounded-lg font-semibold flex items-center justify-center transition-colors">+ Solicitar Agendamento</button>
-                    </form>
-                </div>
-            </div>
+    <!-- Stats Cards (Admin) -->
+    <div id="stats-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 opacity-0 animate-[fadeInUp_0.6s_0.2s_forwards] hidden">
+      <div id="approved-card" class="bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800 flex items-center space-x-5 group">
+        <div class="bg-green-500/10 group-hover:bg-green-500/20 transition-colors p-4 rounded-2xl border border-green-500/20">
+          <ion-icon name="checkmark-circle" class="text-3xl text-green-400"></ion-icon>
         </div>
+        <div>
+          <p class="text-sm font-medium text-slate-400 mb-1">Aprovados</p>
+          <p id="approved-events-count" class="text-3xl font-bold text-white">0</p>
+        </div>
+      </div>
+      <div id="pending-card" class="bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800 flex items-center space-x-5 group">
+        <div class="bg-yellow-500/10 group-hover:bg-yellow-500/20 transition-colors p-4 rounded-2xl border border-yellow-500/20">
+          <ion-icon name="time" class="text-3xl text-yellow-400"></ion-icon>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-slate-400 mb-1">Pendentes</p>
+          <p id="pending-events-count" class="text-3xl font-bold text-white">0</p>
+        </div>
+      </div>
+      <div id="spaces-card" class="bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800 flex items-center space-x-5 group">
+        <div class="bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors p-4 rounded-2xl border border-blue-500/20">
+          <ion-icon name="business" class="text-3xl text-blue-400"></ion-icon>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-slate-400 mb-1">Em Uso</p>
+          <p id="spaces-count" class="text-3xl font-bold text-white">0</p>
+        </div>
+      </div>
     </div>
 
-    
-    <div id="list-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
-        <div class="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-lg modal-content opacity-0 transform -translate-y-5 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="list-modal-title" class="text-xl font-bold text-gray-100"></h3>
-                <button id="close-list-modal-btn" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
-            </div>
-            
-            
-            <div id="list-modal-filter-container" class="mb-4 hidden space-y-3">
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                         <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </div>
-                    <input type="text" id="list-modal-filter-input" class="form-input w-full pl-10 p-2 text-sm" placeholder="Filtrar por nome, espaço, data...">
-                </div>
-                <div>
-                    <label for="month-filter-select" class="sr-only">Filtrar por Mês</label>
-                    <select id="month-filter-select" class="form-input w-full text-sm"></select>
-                </div>
-                <div class="flex items-center">
-                    <input type="checkbox" id="future-events-filter-checkbox" class="h-4 w-4 rounded bg-gray-700 border-gray-500 text-brand-primary focus:ring-brand-primary">
-                    <label for="future-events-filter-checkbox" class="ml-2 block text-sm text-gray-200">Apenas eventos futuros</label>
-                </div>
-            </div>
-
-            <div id="list-modal-content" class="flex-1 overflow-y-auto bg-gray-900 p-2 rounded-b-xl">
-                
-            </div>
-        </div>
+    <!-- User Instructions -->
+    <div id="user-instructions" class="mb-10 opacity-0 animate-[fadeInUp_0.6s_0.2s_forwards] hidden">
+      <div class="bg-blue-900/20 border border-blue-800/30 rounded-2xl p-5 flex items-start sm:items-center gap-4 text-left sm:text-center max-w-3xl mx-auto backdrop-blur-sm">
+        <ion-icon name="information-circle" class="text-3xl text-blue-400 shrink-0"></ion-icon>
+        <p class="text-blue-200/90 text-sm font-medium leading-relaxed">
+          Para agendar, selecione a data desejada no calendário abaixo e preencha as informações do formulário. A solicitação passará por análise.
+        </p>
+      </div>
     </div>
 
+    <!-- Calendar Card -->
+    <div class="bg-slate-900/70 backdrop-blur-2xl border border-slate-800 rounded-3xl shadow-2xl shadow-black/40 p-5 sm:p-8 opacity-0 animate-[fadeInUp_0.6s_0.3s_forwards]">
+      
+      <!-- Calendar Header -->
+      <div class="flex items-center justify-between mb-8">
+        <button id="prev-month" class="p-3 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-white transition-all border border-slate-700/50">
+          <ion-icon name="chevron-back" class="text-xl"></ion-icon>
+        </button>
+        
+        <button id="toggle-date-selector-btn" class="flex items-center gap-3 text-xl sm:text-2xl font-bold text-white hover:text-blue-400 capitalize transition-colors group px-4 py-2 rounded-xl">
+          <span id="month-year"></span>
+          <ion-icon name="chevron-down-circle" class="text-slate-500 group-hover:text-blue-400 transition-transform duration-300"></ion-icon>
+        </button>
+        
+        <button id="next-month" class="p-3 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-white transition-all border border-slate-700/50">
+          <ion-icon name="chevron-forward" class="text-xl"></ion-icon>
+        </button>
+      </div>
 
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+      <!-- Date Selector Dropdown -->
+      <div id="date-selector-container">
+        <div class="bg-slate-800/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 border border-slate-700/50">
+          <button id="today-btn" class="w-full sm:w-auto text-sm font-bold text-white px-5 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 transition-all">Ir para Hoje</button>
+          <div class="hidden sm:block w-px h-8 bg-slate-700"></div>
+          <div class="w-full flex flex-col sm:flex-row sm:items-center gap-3">
+            <select id="month-select" class="form-input w-full sm:w-auto rounded-xl text-sm px-4 py-2.5 font-medium"></select>
+            <select id="year-select" class="form-input w-full sm:w-auto rounded-xl text-sm px-4 py-2.5 font-medium"></select>
+          </div>
+          <button id="go-to-date-btn" class="btn-primary w-full sm:w-auto text-white px-5 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2">
+            <span>Ir para Data</span>
+            <ion-icon name="arrow-forward"></ion-icon>
+          </button>
+        </div>
+      </div>
 
-        
-        const firebaseConfig = {
-          apiKey: "AIzaSyBcTIht4nIFVsxL3dKE7-UwExkksIVm7Jk",
-          authDomain: "agendamentocnaguasclara.firebaseapp.com",
-          projectId: "agendamentocnaguasclara",
-          storageBucket: "agendamentocnaguasclara.appspot.com",
-          messagingSenderId: "506893617246",
-          appId: "1:506893617246:web:9fc8533f587d4b3fe7cccf",
-          measurementId: "G-1FSG6ZZFKE"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+      <!-- Weekdays -->
+      <div class="grid grid-cols-7 gap-2 mb-4">
+        <div class="text-center text-xs font-bold tracking-wider text-slate-500 uppercase py-2">Dom</div>
+        <div class="text-center text-xs font-bold tracking-wider text-slate-500 uppercase py-2">Seg</div>
+        <div class="text-center text-xs font-bold tracking-wider text-slate-500 uppercase py-2">Ter</div>
+        <div class="text-center text-xs font-bold tracking-wider text-slate-500 uppercase py-2">Qua</div>
+        <div class="text-center text-xs font-bold tracking-wider text-slate-500 uppercase py-2">Qui</div>
+        <div class="text-center text-xs font-bold tracking-wider text-slate-500 uppercase py-2">Sex</div>
+        <div class="text-center text-xs font-bold tracking-wider text-slate-500 uppercase py-2">Sáb</div>
+      </div>
+      
+      <!-- Days Grid -->
+      <div id="calendar-days" class="grid grid-cols-7 gap-2 sm:gap-3"></div>
+    </div>
+  </div>
 
-        
-        const adminUIDs = ["acpMKMv2HKYys1UxxlOKHms4Kaw2"];
+  <!-- Login Modal -->
+  <div id="login-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-8 w-full max-w-md modal-content opacity-0 scale-95">
+      <div class="text-center mb-8">
+        <div class="inline-flex p-3 bg-blue-500/10 rounded-2xl mb-4 border border-blue-500/20">
+          <ion-icon name="shield-checkmark" class="text-3xl text-brand-secondary"></ion-icon>
+        </div>
+        <h3 class="text-2xl font-bold text-white">Acesso Administrativo</h3>
+        <p class="text-sm text-slate-400 mt-2">Gerencie as solicitações e aprovações do sistema.</p>
+      </div>
+      <form id="login-form">
+        <div class="space-y-4">
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
+              <ion-icon name="mail"></ion-icon>
+            </span>
+            <input type="email" id="login-email" class="form-input pl-12 w-full rounded-xl text-sm py-3.5" placeholder="E-mail de administrador" required>
+          </div>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
+              <ion-icon name="lock-closed"></ion-icon>
+            </span>
+            <input type="password" id="login-password" class="form-input pl-12 w-full rounded-xl text-sm py-3.5" placeholder="Senha" required>
+          </div>
+        </div>
+        <p id="login-feedback" class="text-sm mt-4 text-center h-5 font-medium"></p>
+        <div class="mt-8 flex gap-3">
+          <button type="button" id="close-login-modal-btn" class="w-1/3 bg-slate-800 text-slate-300 py-3 px-4 rounded-xl hover:bg-slate-700 font-semibold transition-colors">Voltar</button>
+          <button type="submit" id="login-submit-btn" class="w-2/3 btn-primary text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center">Entrar no Sistema</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-        
-        let currentUser = null;
-        let currentDate = new Date();
-        let allEvents = [];
-        let selectedDate = null;
-        const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-        let eventsListenerUnsubscribe = null; 
+  <!-- Event Modal (Visualizar e Adicionar) -->
+  <div id="event-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-5xl modal-content opacity-0 scale-95 flex flex-col max-h-[95vh]">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 rounded-t-3xl backdrop-blur-sm sticky top-0 z-10">
+        <div>
+          <h3 id="modal-title" class="text-xl sm:text-2xl font-bold text-white flex items-center gap-3"></h3>
+          <p class="text-sm text-slate-400 mt-1">Gerencie a agenda e novas solicitações para esta data.</p>
+        </div>
+        <button id="close-modal-btn" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-red-500/20 p-2 rounded-full transition-colors flex">
+          <ion-icon name="close" class="text-2xl"></ion-icon>
+        </button>
+      </div>
 
-        
-        const monthYearEl = document.getElementById('month-year');
-        const calendarDaysEl = document.getElementById('calendar-days');
-        const prevMonthBtn = document.getElementById('prev-month');
-        const nextMonthBtn = document.getElementById('next-month');
-        const todayBtn = document.getElementById('today-btn');
-        const toggleDateSelectorBtn = document.getElementById('toggle-date-selector-btn');
-        const dateSelectorContainer = document.getElementById('date-selector-container');
-        const monthSelect = document.getElementById('month-select');
-        const yearSelect = document.getElementById('year-select');
-        const goToDateBtn = document.getElementById('go-to-date-btn');
-        
-        
-        const statsCardsContainer = document.getElementById('stats-cards-container');
-        const userInstructions = document.getElementById('user-instructions');
-        const approvedEventsCountEl = document.getElementById('approved-events-count');
-        const pendingEventsCountEl = document.getElementById('pending-events-count');
-        const spacesCountEl = document.getElementById('spaces-count');
-        const approvedCard = document.getElementById('approved-card');
-        const pendingCard = document.getElementById('pending-card');
-        const spacesCard = document.getElementById('spaces-card');
-        
-        
-        const eventModal = document.getElementById('event-modal');
-        const modalTitle = document.getElementById('modal-title');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        const eventForm = document.getElementById('event-form');
-        const eventListEl = document.getElementById('event-list');
-        const espacoSelect = document.getElementById('event-espaco');
+      <!-- Modal Body -->
+      <div class="p-6 sm:p-8 overflow-y-auto">
+        <div class="grid lg:grid-cols-12 gap-8 lg:gap-12">
+          
+          <!-- Lado Esquerdo: Lista -->
+          <div class="lg:col-span-5 flex flex-col lg:border-r lg:border-slate-800 lg:pr-8">
+            <h4 class="font-bold text-white mb-4 flex items-center gap-2 text-lg">
+              <ion-icon name="list" class="text-brand-secondary"></ion-icon>
+              Agenda do Dia
+            </h4>
+            <div id="event-list" class="space-y-4 pr-2 flex-1 overflow-y-auto" style="max-height: calc(100vh - 300px);"></div>
+          </div>
 
-        
-        const adminRecurringSection = document.getElementById('admin-recurring-section');
-        const recurringEventCheckbox = document.getElementById('recurring-event-checkbox');
-        const recurringOptions = document.getElementById('recurring-options');
-        
-        
-        const loginModal = document.getElementById('login-modal');
-        const openLoginModalBtn = document.getElementById('open-login-modal-btn');
-        const closeLoginModalBtn = document.getElementById('close-login-modal-btn');
-        const loginForm = document.getElementById('login-form');
-        const loginFeedbackEl = document.getElementById('login-feedback');
-        const loginSubmitBtn = document.getElementById('login-submit-btn');
-        const authContainer = document.getElementById('auth-container');
-        const userStatusEl = document.getElementById('user-status');
-        const logoutBtn = document.getElementById('logout-btn');
+          <!-- Lado Direito: Formulário -->
+          <div class="lg:col-span-7 lg:pl-4">
+            <div class="flex items-center justify-between mb-5">
+              <h4 class="font-bold text-white flex items-center gap-2 text-lg">
+                <ion-icon name="add-circle" class="text-brand-secondary"></ion-icon>
+                Nova Solicitação
+              </h4>
+              <span id="selected-date-chip" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20">
+                <ion-icon name="calendar"></ion-icon>
+                <span id="selected-date-chip-text"></span>
+              </span>
+            </div>
 
-        
-        const listModal = document.getElementById('list-modal');
-        const listModalTitle = document.getElementById('list-modal-title');
-        const listModalContent = document.getElementById('list-modal-content');
-        const closeListModalBtn = document.getElementById('close-list-modal-btn');
-
-        
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            updateAuthUI(user);
-
-            
-            if (eventsListenerUnsubscribe) {
-                eventsListenerUnsubscribe();
-            }
-
-            if (user) {
+            <div class="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-5 sm:p-6">
+              <form id="event-form" class="space-y-5" novalidate>
                 
-                listenToEvents();
-            } else {
-                
-                signInAnonymously(auth).catch((error) => {
-                    console.error("Falha no login anônimo:", error);
-                });
-            }
-        });
-
-        function updateAuthUI(user) {
-            const isUserAdmin = user && adminUIDs.includes(user.uid);
-            const cards = [approvedCard, pendingCard, spacesCard];
-
-            if (isUserAdmin) {
-                
-                openLoginModalBtn.classList.add('hidden');
-                userStatusEl.classList.remove('hidden');
-                cards.forEach(card => card.classList.add('card-interactive'));
-                statsCardsContainer.classList.remove('hidden');
-                userInstructions.classList.add('hidden');
-            } else {
-                
-                openLoginModalBtn.classList.remove('hidden');
-                userStatusEl.classList.add('hidden');
-                cards.forEach(card => card.classList.remove('card-interactive'));
-                statsCardsContainer.classList.add('hidden');
-                userInstructions.classList.remove('hidden');
-            }
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            const originalBtnText = loginSubmitBtn.innerHTML;
-            loginSubmitBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-            loginSubmitBtn.disabled = true;
-            loginFeedbackEl.textContent = '';
-
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                loginFeedbackEl.textContent = 'Login bem-sucedido!';
-                loginFeedbackEl.classList.remove('text-red-500');
-                loginFeedbackEl.classList.add('text-green-500');
-                setTimeout(() => {
-                    loginModal.classList.add('hidden');
-                    loginForm.reset();
-                    loginFeedbackEl.textContent = '';
-                }, 1000);
-            } catch (error) {
-                loginFeedbackEl.textContent = 'Email ou senha inválidos.';
-                loginFeedbackEl.classList.add('text-red-500');
-                loginFeedbackEl.classList.remove('text-green-500');
-            } finally {
-                loginSubmitBtn.innerHTML = originalBtnText;
-                loginSubmitBtn.disabled = false;
-            }
-        }
-
-        async function handleLogout() {
-            await signOut(auth);
-        }
-
-        openLoginModalBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
-        closeLoginModalBtn.addEventListener('click', () => loginModal.classList.add('hidden'));
-        loginModal.addEventListener('click', (e) => { if (e.target === loginModal) loginModal.classList.add('hidden'); });
-        loginForm.addEventListener('submit', handleLogin);
-        logoutBtn.addEventListener('click', handleLogout);
-
-
-        
-        function renderCalendar() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            monthYearEl.textContent = `${monthNames[month]} de ${year}`;
-            calendarDaysEl.innerHTML = '';
-            
-            const firstDayOfMonth = new Date(year, month, 1).getDay();
-            const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
-            
-            for (let i = 0; i < firstDayOfMonth; i++) { calendarDaysEl.appendChild(document.createElement('div')); }
-            
-            for (let i = 1; i <= lastDateOfMonth; i++) {
-                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                const hasApprovedEvents = allEvents.some(event => event.date === dateString && event.status === 'aprovado');
-                const hasPendingEvents = allEvents.some(event => event.date === dateString && event.status === 'pendente');
-                createDayElement(i, dateString, hasApprovedEvents, hasPendingEvents);
-            }
-        }
-
-        function createDayElement(day, dateString, hasApprovedEvents, hasPendingEvents) {
-            const dayElWrapper = document.createElement('div');
-            dayElWrapper.className = 'flex items-center justify-center p-1 relative';
-            const dayEl = document.createElement('div');
-            dayEl.textContent = day;
-            const isToday = dateString === new Date().toISOString().split('T')[0];
-            dayEl.className = 'flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-sm transition-colors duration-300 cursor-pointer';
-            
-            if (isToday) { 
-                dayEl.classList.add('bg-brand-primary', 'text-white', 'font-bold'); 
-            } else { 
-                dayEl.classList.add('text-gray-300', 'hover:bg-gray-700'); 
-            }
-
-            if (hasApprovedEvents || hasPendingEvents) {
-                const eventDot = document.createElement('div');
-                eventDot.className = 'absolute bottom-1.5 h-1.5 w-1.5 rounded-full';
-                if (hasApprovedEvents) {
-                    eventDot.classList.add(isToday ? 'bg-white' : 'bg-brand-primary');
-                } else {
-                    eventDot.classList.add(isToday ? 'bg-gray-300' : 'bg-yellow-400');
-                }
-                dayEl.appendChild(eventDot);
-            }
-
-            dayEl.addEventListener('click', () => openDayModal(dateString));
-            dayElWrapper.appendChild(dayEl);
-            calendarDaysEl.appendChild(dayElWrapper);
-        }
-
-        
-        function populateDateSelectors() {
-            monthNames.forEach((name, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = name.charAt(0).toUpperCase() + name.slice(1);
-                monthSelect.appendChild(option);
-            });
-            const currentYear = new Date().getFullYear();
-            for (let i = currentYear - 5; i <= currentYear + 5; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                yearSelect.appendChild(option);
-            }
-        }
-
-        function updateDateSelectors() {
-            monthSelect.value = currentDate.getMonth();
-            yearSelect.value = currentDate.getFullYear();
-        }
-
-        function handleGoToDate() {
-            const selectedMonth = parseInt(monthSelect.value);
-            const selectedYear = parseInt(yearSelect.value);
-            currentDate = new Date(selectedYear, selectedMonth, 1);
-            renderCalendar();
-        }
-        
-        function openDayModal(dateString) {
-            eventForm.reset();
-            
-            const feedbackEl = document.getElementById('form-validation-feedback');
-            if (feedbackEl) {
-                feedbackEl.classList.add('hidden');
-                feedbackEl.innerHTML = '';
-            }
-            
-            selectedDate = dateString;
-            const date = new Date(dateString + 'T00:00:00');
-            modalTitle.textContent = `Agenda para ${date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-
-            const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
-            adminRecurringSection.classList.toggle('hidden', !isUserAdmin);
-            recurringEventCheckbox.checked = false;
-            recurringOptions.classList.add('hidden');
-            
-            updateEventList();
-            
-            eventModal.classList.remove('hidden');
-            setTimeout(() => {
-                eventModal.querySelector('.modal-content').classList.remove('opacity-0', '-translate-y-5');
-            }, 10);
-        }
-
-        function closeDayModal() {
-            eventModal.querySelector('.modal-content').classList.add('opacity-0', '-translate-y-5');
-            setTimeout(() => {
-                eventModal.classList.add('hidden');
-                eventForm.reset();
-            }, 300);
-        }
-
-        function openListModal() {
-            listModal.classList.remove('hidden');
-            setTimeout(() => {
-                listModal.querySelector('.modal-content').classList.remove('opacity-0', '-translate-y-5');
-            }, 10);
-        }
-        
-        function closeListModal() {
-            listModal.querySelector('.modal-content').classList.add('opacity-0', '-translate-y-5');
-            setTimeout(() => {
-                listModal.classList.add('hidden');
-            }, 300);
-        }
-
-        function updateEventList() {
-            const dayEvents = allEvents.filter(event => event.date === selectedDate);
-            eventListEl.innerHTML = '';
-            if (dayEvents.length === 0) {
-                eventListEl.innerHTML = '<div class="text-center text-sm text-gray-400 p-4">Nenhuma solicitação para esta data.</div>';
-                return;
-            }
-
-            const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
-
-            dayEvents.sort((a, b) => (a.horarioInicio || "").localeCompare(b.horarioInicio || "")).forEach(event => {
-                const eventItem = document.createElement('div');
-                eventItem.className = 'bg-gray-900 p-3 rounded-lg border border-gray-700 mb-2 shadow-sm';
-                
-                
-                const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
-
-                if (isUserAdmin) {
-                    let statusBadge = event.status === 'aprovado' 
-                        ? '<span class="text-xs font-semibold text-green-300 bg-green-900/50 px-2 py-1 rounded-full">Aprovado</span>' 
-                        : '<span class="text-xs font-semibold text-yellow-300 bg-yellow-900/50 px-2 py-1 rounded-full">Pendente</span>';
-
-                    let actionButtons = event.status === 'pendente' ? `
-                        <div class="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-700">
-                            <button onclick="window.approveEvent('${event.id}')" class="action-button bg-green-500 text-white hover:bg-green-600">Aprovar</button>
-                            <button onclick="window.rejectEvent('${event.id}')" class="action-button bg-red-500 text-white hover:bg-red-600 p-1 rounded-full flex items-center justify-center w-6 h-6">&times;</button>
-                        </div>` : `
-                        <div class="flex items-center justify-end mt-3 pt-3 border-t border-gray-700">
-                             <button onclick="window.rejectEvent('${event.id}')" class="action-button bg-gray-700 text-gray-300 hover:bg-red-900/50 hover:text-red-400 p-1 rounded-full flex items-center justify-center w-6 h-6">&times;</button>
-                        </div>
-                        `;
-
-                    eventItem.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="font-semibold text-sm text-gray-100">${event.nome}</p>
-                                <p class="text-xs text-gray-400 mt-1">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${timeDisplay} - ${event.espaco}</p>
-                            </div>
-                            ${statusBadge}
-                        </div>
-                        <div class="text-xs text-gray-300 mt-2 space-y-1 border-t border-gray-700 pt-2">
-                            <p><strong>Contato:</strong> ${event.whatsapp || 'Não informado'}</p>
-                            <p><strong>Email:</strong> ${event.email || 'Não informado'}</p>
-                            <p><strong>Ministério:</strong> ${event.ministerio || 'Não informado'}</p>
-                            <p><strong>Observações:</strong> ${event.observacoes || 'Nenhuma'}</p>
-                        </div>
-                        ${actionButtons}`;
-                } else {
-                    const statusBadge = '<span class="text-xs font-semibold text-gray-300 bg-gray-700 px-2 py-1 rounded-full">Ocupado</span>';
-                    eventItem.innerHTML = `
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="font-semibold text-sm text-gray-100">${timeDisplay}</p>
-                                <p class="text-xs text-gray-400">${event.espaco}</p>
-                            </div>
-                            ${statusBadge}
-                        </div>`;
-                }
-                eventListEl.appendChild(eventItem);
-            });
-        }
-
-        
-        function renderListInModal(events, status) {
-            const filterInput = document.getElementById('list-modal-filter-input');
-            const futureEventsCheckbox = document.getElementById('future-events-filter-checkbox');
-            const monthFilterSelect = document.getElementById('month-filter-select');
-            
-            const searchTerm = filterInput.value.toLowerCase().trim();
-            const showOnlyFuture = futureEventsCheckbox.checked;
-            const selectedMonth = monthFilterSelect.value;
-            const isApprovedList = status === 'aprovado';
-
-            let eventsToDisplay = [...events];
-
-            
-            if (isApprovedList) {
-                
-                if (selectedMonth) {
-                    eventsToDisplay = eventsToDisplay.filter(event => event.date.startsWith(selectedMonth));
-                }
-
-                
-                if (showOnlyFuture) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0); 
-                    eventsToDisplay = eventsToDisplay.filter(event => {
-                        const eventDate = new Date(event.date + 'T00:00:00');
-                        return eventDate >= today;
-                    });
-                }
-
-                
-                if (searchTerm) {
-                    eventsToDisplay = eventsToDisplay.filter(event => {
-                        const date = new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR');
-                        return (event.nome?.toLowerCase() || '').includes(searchTerm) ||
-                               (event.espaco?.toLowerCase() || '').includes(searchTerm) ||
-                               date.includes(searchTerm);
-                    });
-                }
-            }
-            
-            listModalContent.innerHTML = ''; 
-
-            if (eventsToDisplay.length === 0) {
-                listModalContent.innerHTML = `<div class="text-center text-sm text-gray-400 p-4">Nenhum evento encontrado para os filtros aplicados.</div>`;
-            } else {
-                listModalContent.innerHTML = eventsToDisplay.map(event => {
-                    const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
-                    const actionButtons = status === 'pendente' ? `
-                        <div class="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-700">
-                            <button onclick="window.approveEvent('${event.id}')" class="action-button bg-green-500 text-white hover:bg-green-600">Aprovar</button>
-                            <button onclick="window.rejectEvent('${event.id}')" class="action-button bg-red-500 text-white hover:bg-red-600 p-1 rounded-full flex items-center justify-center w-6 h-6">&times;</button>
-                        </div>` : `
-                        <div class="flex items-center justify-end mt-3 pt-3 border-t border-gray-700">
-                             <button onclick="window.rejectEvent('${event.id}')" class="action-button bg-gray-700 text-gray-300 hover:bg-red-900/50 hover:text-red-400 p-1 rounded-full flex items-center justify-center w-6 h-6">&times;</button>
-                        </div>`;
-
-                    return `
-                    <div class="bg-gray-900 p-3 rounded-lg border border-gray-700 mb-2 shadow-sm">
-                        <div class="flex justify-between items-start">
-                             <div>
-                                <p class="font-semibold text-sm text-gray-100">${event.nome}</p>
-                                <p class="text-xs text-gray-400 mt-1">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${timeDisplay} - ${event.espaco}</p>
-                            </div>
-                        </div>
-                        <div class="text-xs text-gray-300 mt-2 space-y-1 border-t border-gray-700 pt-2">
-                            <p><strong>Contato:</strong> ${event.whatsapp || 'Não informado'}</p>
-                            <p><strong>Email:</strong> ${event.email || 'Não informado'}</p>
-                            <p><strong>Ministério:</strong> ${event.ministerio || 'Não informado'}</p>
-                            <p><strong>Observações:</strong> ${event.observacoes || 'Nenhuma'}</p>
-                        </div>
-                        ${actionButtons}
-                    </div>`;
-                }).join('');
-            }
-        }
-        
-        function showEventListInModal(status) {
-            const isApprovedList = status === 'aprovado';
-            const title = isApprovedList ? 'Eventos Aprovados' : 'Eventos Pendentes';
-            listModalTitle.textContent = title;
-
-            const filterContainer = document.getElementById('list-modal-filter-container');
-            const filterInput = document.getElementById('list-modal-filter-input');
-            const futureEventsCheckbox = document.getElementById('future-events-filter-checkbox');
-            const monthFilterSelect = document.getElementById('month-filter-select');
-            
-            const baseEventList = allEvents.filter(event => event.status === status)
-                                            .sort((a,b) => new Date(a.date) - new Date(b.date));
-            
-            
-            if (isApprovedList) {
-                filterContainer.classList.remove('hidden');
-                filterInput.value = '';
-                futureEventsCheckbox.checked = false;
-
-                
-                const uniqueMonths = [...new Set(baseEventList.map(event => event.date.substring(0, 7)))];
-                monthFilterSelect.innerHTML = '<option value="">Todos os meses</option>';
-                uniqueMonths.forEach(monthYear => {
-                    const [year, month] = monthYear.split('-');
-                    const monthName = monthNames[parseInt(month) - 1];
-                    const option = document.createElement('option');
-                    option.value = monthYear;
-                    option.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${year}`;
-                    monthFilterSelect.appendChild(option);
-                });
-                monthFilterSelect.value = '';
-                
-                const rerender = () => renderListInModal(baseEventList, 'aprovado');
-                filterInput.onkeyup = rerender;
-                futureEventsCheckbox.onchange = rerender;
-                monthFilterSelect.onchange = rerender;
-
-            } else {
-                filterContainer.classList.add('hidden');
-            }
-            
-            
-            renderListInModal(baseEventList, status);
-            openListModal();
-        }
-
-        function showUsedSpacesInModal() {
-            listModalTitle.textContent = 'Espaços Utilizados';
-            const approvedEvents = allEvents.filter(e => e.status === 'aprovado');
-            
-            listModalContent.innerHTML = ''; 
-            if (approvedEvents.length === 0) {
-                listModalContent.innerHTML = '<div class="text-center text-sm text-gray-400 p-4">Nenhum espaço sendo utilizado.</div>';
-            } else {
-                listModalContent.innerHTML = approvedEvents.map(event => {
-                    const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
-                    return `
-                    <div class="bg-gray-900 p-3 rounded-lg border border-gray-700 mb-2 shadow-sm">
-                        <p class="font-semibold text-sm text-gray-100">${event.espaco}</p>
-                        <p class="text-xs text-gray-400 mt-1">Reservado por <strong>${event.nome}</strong></p>
-                        <p class="text-xs text-gray-400">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})} | ${timeDisplay}</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nome Completo</label>
+                    <div class="relative">
+                      <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><ion-icon name="person"></ion-icon></span>
+                      <input type="text" id="event-name" placeholder="Ex: João da Silva" class="form-input pl-10 w-full rounded-xl text-sm py-3" required>
                     </div>
-                `}).join('');
-            }
-            openListModal();
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">WhatsApp</label>
+                    <div class="relative">
+                      <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><ion-icon name="logo-whatsapp"></ion-icon></span>
+                      <input type="text" id="event-whatsapp" placeholder="(00) 00000-0000" class="form-input pl-10 w-full rounded-xl text-sm py-3" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Email</label>
+                    <div class="relative">
+                      <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><ion-icon name="mail"></ion-icon></span>
+                      <input type="email" id="event-email" placeholder="email@exemplo.com" class="form-input pl-10 w-full rounded-xl text-sm py-3" required>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Resp. (Email)</label>
+                    <div class="relative">
+                      <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><ion-icon name="shield-checkmark"></ion-icon></span>
+                      <input type="email" id="event-responsavel" placeholder="Líder/Responsável" class="form-input pl-10 w-full rounded-xl text-sm py-3" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Ministério / Grupo</label>
+                  <div class="relative">
+                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><ion-icon name="people"></ion-icon></span>
+                    <input type="text" id="event-ministerio" placeholder="Qual ministério ou equipe?" class="form-input pl-10 w-full rounded-xl text-sm py-3" required>
+                  </div>
+                </div>
+
+                <div class="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent my-2"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Espaço Desejado</label>
+                    <div class="relative">
+                      <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><ion-icon name="location"></ion-icon></span>
+                      <select id="event-espaco" class="form-input pl-10 w-full rounded-xl text-sm py-3 appearance-none" required>
+                        <option value="" disabled selected>Selecione o local</option>
+                        <option>Lounge</option>
+                        <option>Templo</option>
+                        <option>Sala Alta (até 25 pessoas)</option>
+                        <option>Sala ID (até 15 pessoas)</option>
+                        <option>Reserva Cantina</option>
+                        <option>Outro</option>
+                      </select>
+                      <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"><ion-icon name="chevron-down"></ion-icon></span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Horário (Início - Fim)</label>
+                    <div class="flex items-center gap-2">
+                      <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-1.5 flex gap-1 flex-1">
+                        <select id="start-hour" class="form-input w-full rounded-lg text-sm p-1.5 text-center bg-transparent border-none focus:ring-0 appearance-none"></select>
+                        <span class="text-slate-500 font-bold flex items-center">:</span>
+                        <select id="start-minute" class="form-input w-full rounded-lg text-sm p-1.5 text-center bg-transparent border-none focus:ring-0 appearance-none"></select>
+                      </div>
+                      <span class="text-slate-500 font-medium">até</span>
+                      <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-1.5 flex gap-1 flex-1">
+                        <select id="end-hour" class="form-input w-full rounded-lg text-sm p-1.5 text-center bg-transparent border-none focus:ring-0 appearance-none"></select>
+                        <span class="text-slate-500 font-bold flex items-center">:</span>
+                        <select id="end-minute" class="form-input w-full rounded-lg text-sm p-1.5 text-center bg-transparent border-none focus:ring-0 appearance-none"></select>
+                      </div>
+                    </div>
+                    <input type="hidden" id="event-horario-inicio" required>
+                    <input type="hidden" id="event-horario-fim" required>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Observações Adicionais</label>
+                  <textarea id="event-observacoes" rows="2" placeholder="Detalhes extras, equipamentos necessários..." class="form-input w-full rounded-xl text-sm p-3 resize-none"></textarea>
+                </div>
+
+                <!-- Admin Recorrente -->
+                <div id="admin-recurring-section" class="hidden mt-4 pt-4 border-t border-slate-700/50">
+                  <label class="flex items-center space-x-3 cursor-pointer group w-max">
+                    <input type="checkbox" id="recurring-event-checkbox" class="h-4 w-4 rounded border-slate-600 bg-slate-800 text-brand-primary focus:ring-brand-primary focus:ring-offset-slate-900 transition-colors">
+                    <span class="text-sm font-bold text-brand-secondary group-hover:text-brand-primary transition-colors flex items-center gap-2">
+                      <ion-icon name="repeat"></ion-icon> Habilitar Recorrência (Admin)
+                    </span>
+                  </label>
+                  
+                  <div id="recurring-options" class="hidden mt-4 bg-slate-900/50 border border-slate-700/50 rounded-xl p-4 space-y-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Repetir até a data</label>
+                      <input type="date" id="recurring-end-date" class="form-input w-full md:w-1/2 rounded-xl text-sm py-2 px-3">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Dias da semana</label>
+                      <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                        <label class="flex items-center justify-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors has-[:checked]:bg-blue-600/20 has-[:checked]:border-blue-500/50 has-[:checked]:text-blue-400">
+                          <input type="checkbox" value="0" class="recurring-day-checkbox sr-only"><span class="text-xs font-bold">Dom</span>
+                        </label>
+                        <label class="flex items-center justify-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors has-[:checked]:bg-blue-600/20 has-[:checked]:border-blue-500/50 has-[:checked]:text-blue-400">
+                          <input type="checkbox" value="1" class="recurring-day-checkbox sr-only"><span class="text-xs font-bold">Seg</span>
+                        </label>
+                        <label class="flex items-center justify-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors has-[:checked]:bg-blue-600/20 has-[:checked]:border-blue-500/50 has-[:checked]:text-blue-400">
+                          <input type="checkbox" value="2" class="recurring-day-checkbox sr-only"><span class="text-xs font-bold">Ter</span>
+                        </label>
+                        <label class="flex items-center justify-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors has-[:checked]:bg-blue-600/20 has-[:checked]:border-blue-500/50 has-[:checked]:text-blue-400">
+                          <input type="checkbox" value="3" class="recurring-day-checkbox sr-only"><span class="text-xs font-bold">Qua</span>
+                        </label>
+                        <label class="flex items-center justify-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors has-[:checked]:bg-blue-600/20 has-[:checked]:border-blue-500/50 has-[:checked]:text-blue-400">
+                          <input type="checkbox" value="4" class="recurring-day-checkbox sr-only"><span class="text-xs font-bold">Qui</span>
+                        </label>
+                        <label class="flex items-center justify-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors has-[:checked]:bg-blue-600/20 has-[:checked]:border-blue-500/50 has-[:checked]:text-blue-400">
+                          <input type="checkbox" value="5" class="recurring-day-checkbox sr-only"><span class="text-xs font-bold">Sex</span>
+                        </label>
+                        <label class="flex items-center justify-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors has-[:checked]:bg-blue-600/20 has-[:checked]:border-blue-500/50 has-[:checked]:text-blue-400">
+                          <input type="checkbox" value="6" class="recurring-day-checkbox sr-only"><span class="text-xs font-bold">Sáb</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="form-validation-feedback" class="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-4 rounded-xl hidden mt-4 flex gap-3">
+                  <ion-icon name="warning" class="text-xl shrink-0"></ion-icon>
+                  <div class="feedback-content"></div>
+                </div>
+
+                <div class="pt-4 mt-6 border-t border-slate-700/50">
+                  <button id="save-event-btn" type="submit" class="w-full btn-primary text-white py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 text-lg">
+                    <ion-icon name="paper-plane"></ion-icon>
+                    Enviar Solicitação
+                  </button>
+                  <p class="text-xs font-medium text-slate-500 text-center mt-4">
+                    Após envio, aguarde a aprovação da administração.
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- List Modal (Admin Lists) -->
+  <div id="list-modal" class="fixed inset-0 modal-overlay items-center justify-center flex hidden z-50 p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl modal-content opacity-0 scale-95 flex flex-col max-h-[90vh]">
+      
+      <div class="px-6 py-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 rounded-t-3xl backdrop-blur-sm">
+        <h3 id="list-modal-title" class="text-xl font-bold text-white flex items-center gap-2"></h3>
+        <button id="close-list-modal-btn" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-red-500/20 p-2 rounded-full transition-colors flex">
+          <ion-icon name="close" class="text-xl"></ion-icon>
+        </button>
+      </div>
+
+      <div class="p-6 flex-1 flex flex-col min-h-0">
+        <div id="list-modal-filter-container" class="mb-5 hidden space-y-4 bg-slate-800/30 p-4 rounded-2xl border border-slate-700/50">
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><ion-icon name="search"></ion-icon></span>
+            <input type="text" id="list-modal-filter-input" class="form-input w-full pl-10 py-2.5 text-sm rounded-xl" placeholder="Pesquisar evento, pessoa, local...">
+          </div>
+          <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <select id="month-filter-select" class="form-input text-sm py-2 px-3 rounded-xl w-full sm:w-auto"></select>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="future-events-filter-checkbox" class="h-4 w-4 rounded border-slate-600 bg-slate-800 text-brand-primary focus:ring-brand-primary focus:ring-offset-slate-900">
+              <span class="text-sm font-medium text-slate-300">Somente eventos futuros</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="list-modal-content" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, query, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBcTIht4nIFVsxL3dKE7-UwExkksIVm7Jk",
+      authDomain: "agendamentocnaguasclara.firebaseapp.com",
+      projectId: "agendamentocnaguasclara",
+      storageBucket: "agendamentocnaguasclara.appspot.com",
+      messagingSenderId: "506893617246",
+      appId: "1:506893617246:web:9fc8533f587d4b3fe7cccf",
+      measurementId: "G-1FSG6ZZFKE"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const adminUIDs = ["acpMKMv2HKYys1UxxlOKHms4Kaw2"];
+
+    let currentUser = null;
+    let currentDate = new Date();
+    let allEvents = [];
+    let selectedDate = null;
+    const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    let eventsListenerUnsubscribe = null;
+
+    // DOM Elements
+    const monthYearEl = document.getElementById('month-year');
+    const calendarDaysEl = document.getElementById('calendar-days');
+    const prevMonthBtn = document.getElementById('prev-month');
+    const nextMonthBtn = document.getElementById('next-month');
+    const todayBtn = document.getElementById('today-btn');
+    const toggleDateSelectorBtn = document.getElementById('toggle-date-selector-btn');
+    const dateSelectorContainer = document.getElementById('date-selector-container');
+    const monthSelect = document.getElementById('month-select');
+    const yearSelect = document.getElementById('year-select');
+    const goToDateBtn = document.getElementById('go-to-date-btn');
+
+    const statsCardsContainer = document.getElementById('stats-cards-container');
+    const userInstructions = document.getElementById('user-instructions');
+    const approvedEventsCountEl = document.getElementById('approved-events-count');
+    const pendingEventsCountEl = document.getElementById('pending-events-count');
+    const spacesCountEl = document.getElementById('spaces-count');
+    const approvedCard = document.getElementById('approved-card');
+    const pendingCard = document.getElementById('pending-card');
+    const spacesCard = document.getElementById('spaces-card');
+
+    const eventModal = document.getElementById('event-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const eventForm = document.getElementById('event-form');
+    const eventListEl = document.getElementById('event-list');
+    const espacoSelect = document.getElementById('event-espaco');
+
+    const adminRecurringSection = document.getElementById('admin-recurring-section');
+    const recurringEventCheckbox = document.getElementById('recurring-event-checkbox');
+    const recurringOptions = document.getElementById('recurring-options');
+
+    const loginModal = document.getElementById('login-modal');
+    const openLoginModalBtn = document.getElementById('open-login-modal-btn');
+    const closeLoginModalBtn = document.getElementById('close-login-modal-btn');
+    const loginForm = document.getElementById('login-form');
+    const loginFeedbackEl = document.getElementById('login-feedback');
+    const loginSubmitBtn = document.getElementById('login-submit-btn');
+    const userStatusEl = document.getElementById('user-status');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    const listModal = document.getElementById('list-modal');
+    const listModalTitle = document.getElementById('list-modal-title');
+    const listModalContent = document.getElementById('list-modal-content');
+    const closeListModalBtn = document.getElementById('close-list-modal-btn');
+
+    const startHourEl = document.getElementById('start-hour');
+    const startMinuteEl = document.getElementById('start-minute');
+    const endHourEl = document.getElementById('end-hour');
+    const endMinuteEl = document.getElementById('end-minute');
+    const hiddenStartTimeEl = document.getElementById('event-horario-inicio');
+    const hiddenEndTimeEl = document.getElementById('event-horario-fim');
+
+    // Utils
+    function pad2(n){ return String(n).padStart(2,'0'); }
+
+    function fillTimeSelects() {
+      if (!startHourEl || !startMinuteEl || !endHourEl || !endMinuteEl) return;
+      const hours = Array.from({ length: 24 }, (_, i) => pad2(i));
+      const minutes = Array.from({ length: 12 }, (_, i) => pad2(i * 5)); 
+      const build = (el, values, ph) => {
+        el.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = ph; opt.disabled = true; opt.selected = true;
+        el.appendChild(opt);
+        values.forEach(v => {
+          const o = document.createElement('option');
+          o.value = v; o.textContent = v;
+          el.appendChild(o);
+        });
+      };
+      build(startHourEl, hours, 'HH');
+      build(endHourEl, hours, 'HH');
+      build(startMinuteEl, minutes, 'MM');
+      build(endMinuteEl, minutes, 'MM');
+    }
+
+    function setHiddenTimeFromSelects() {
+      const sh = startHourEl?.value || '';
+      const sm = startMinuteEl?.value || '';
+      const eh = endHourEl?.value || '';
+      const em = endMinuteEl?.value || '';
+      hiddenStartTimeEl.value = (sh && sm) ? `${sh}:${sm}` : '';
+      hiddenEndTimeEl.value = (eh && em) ? `${eh}:${em}` : '';
+    }
+
+    [startHourEl, startMinuteEl, endHourEl, endMinuteEl].forEach(el => {
+      if (el) el.addEventListener('change', setHiddenTimeFromSelects);
+    });
+
+    function resetTimeSelects() {
+      if (!startHourEl) return;
+      startHourEl.selectedIndex = 0; startMinuteEl.selectedIndex = 0;
+      endHourEl.selectedIndex = 0; endMinuteEl.selectedIndex = 0;
+      setHiddenTimeFromSelects();
+    }
+
+    fillTimeSelects();
+    setHiddenTimeFromSelects();
+
+    // Auth logic
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      updateAuthUI(user);
+      if (eventsListenerUnsubscribe) eventsListenerUnsubscribe();
+      if (user) listenToEvents();
+      else signInAnonymously(auth).catch((error) => console.error("Falha no login anônimo:", error));
+    });
+
+    function updateAuthUI(user) {
+      const isUserAdmin = user && adminUIDs.includes(user.uid);
+      const cards = [approvedCard, pendingCard, spacesCard];
+      if (isUserAdmin) {
+        openLoginModalBtn.classList.add('hidden');
+        userStatusEl.classList.remove('hidden');
+        cards.forEach(card => card.classList.add('card-interactive'));
+        statsCardsContainer.classList.remove('hidden');
+        userInstructions.classList.add('hidden');
+      } else {
+        openLoginModalBtn.classList.remove('hidden');
+        userStatusEl.classList.add('hidden');
+        cards.forEach(card => card.classList.remove('card-interactive'));
+        statsCardsContainer.classList.add('hidden');
+        userInstructions.classList.remove('hidden');
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const originalBtnText = loginSubmitBtn.innerHTML;
+      loginSubmitBtn.innerHTML = `<ion-icon name="refresh" class="animate-spin text-xl"></ion-icon> Processando...`;
+      loginSubmitBtn.disabled = true;
+      loginFeedbackEl.textContent = '';
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        loginFeedbackEl.textContent = 'Acesso liberado!';
+        loginFeedbackEl.classList.remove('text-red-400');
+        loginFeedbackEl.classList.add('text-green-400');
+        setTimeout(() => {
+          closeModal(loginModal);
+          loginForm.reset();
+          loginFeedbackEl.textContent = '';
+        }, 1000);
+      } catch (error) {
+        loginFeedbackEl.textContent = 'Credenciais incorretas.';
+        loginFeedbackEl.classList.add('text-red-400');
+        loginFeedbackEl.classList.remove('text-green-400');
+      } finally {
+        loginSubmitBtn.innerHTML = originalBtnText;
+        loginSubmitBtn.disabled = false;
+      }
+    }
+
+    async function handleLogout() { await signOut(auth); }
+
+    // Helpers modais
+    function openModal(modalEl) {
+      modalEl.classList.remove('hidden');
+      setTimeout(() => {
+        modalEl.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95');
+        modalEl.querySelector('.modal-content').classList.add('opacity-100', 'scale-100');
+      }, 10);
+    }
+    function closeModal(modalEl) {
+      modalEl.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
+      modalEl.querySelector('.modal-content').classList.remove('opacity-100', 'scale-100');
+      setTimeout(() => { modalEl.classList.add('hidden'); }, 300);
+    }
+
+    openLoginModalBtn.addEventListener('click', () => openModal(loginModal));
+    closeLoginModalBtn.addEventListener('click', () => closeModal(loginModal));
+    loginModal.addEventListener('click', (e) => { if (e.target === loginModal) closeModal(loginModal); });
+    loginForm.addEventListener('submit', handleLogin);
+    logoutBtn.addEventListener('click', handleLogout);
+
+    // Calendar Render
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      monthYearEl.innerHTML = `${monthNames[month]} <span class="text-brand-primary ml-1">${year}</span>`;
+      calendarDaysEl.innerHTML = '';
+
+      const firstDayOfMonth = new Date(year, month, 1).getDay();
+      const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let i = 0; i < firstDayOfMonth; i++) calendarDaysEl.appendChild(document.createElement('div'));
+
+      for (let i = 1; i <= lastDateOfMonth; i++) {
+        const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        const hasApprovedEvents = allEvents.some(event => event.date === dateString && event.status === 'aprovado');
+        const hasPendingEvents = allEvents.some(event => event.date === dateString && event.status === 'pendente');
+        createDayElement(i, dateString, hasApprovedEvents, hasPendingEvents);
+      }
+    }
+
+    function createDayElement(day, dateString, hasApprovedEvents, hasPendingEvents) {
+      const dayElWrapper = document.createElement('div');
+      dayElWrapper.className = 'aspect-square relative flex items-center justify-center';
+      
+      const dayEl = document.createElement('div');
+      dayEl.textContent = day;
+      const isToday = dateString === new Date().toISOString().split('T')[0];
+      
+      // Estilo base da célula do dia
+      dayEl.className = 'flex items-center justify-center w-full h-full rounded-2xl text-sm sm:text-base transition-all duration-300 cursor-pointer border border-transparent font-medium';
+
+      if (isToday) {
+        dayEl.classList.add('bg-gradient-to-br', 'from-blue-600', 'to-blue-800', 'text-white', 'font-bold', 'shadow-lg', 'shadow-blue-900/50', 'ring-2', 'ring-blue-500/30', 'ring-offset-2', 'ring-offset-slate-900');
+      } else {
+        dayEl.classList.add('bg-slate-800/40', 'text-slate-300', 'hover:bg-slate-700', 'hover:border-slate-600', 'hover:text-white', 'hover:shadow-lg');
+      }
+
+      if (hasApprovedEvents || hasPendingEvents) {
+        const eventDot = document.createElement('div');
+        eventDot.className = 'absolute bottom-2 h-1.5 w-1.5 rounded-full shadow-sm';
+        if (hasApprovedEvents) eventDot.classList.add(isToday ? 'bg-white' : 'bg-brand-secondary', 'shadow-blue-500/50');
+        else eventDot.classList.add(isToday ? 'bg-yellow-200' : 'bg-yellow-400', 'shadow-yellow-500/50');
+        dayEl.appendChild(eventDot);
+      }
+
+      dayEl.addEventListener('click', () => openDayModal(dateString));
+      dayElWrapper.appendChild(dayEl);
+      calendarDaysEl.appendChild(dayElWrapper);
+    }
+
+    // Selectors
+    function populateDateSelectors() {
+      monthNames.forEach((name, index) => {
+        const option = document.createElement('option');
+        option.value = index; option.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+        monthSelect.appendChild(option);
+      });
+      const currentYear = new Date().getFullYear();
+      for (let i = currentYear - 5; i <= currentYear + 5; i++) {
+        const option = document.createElement('option');
+        option.value = i; option.textContent = i;
+        yearSelect.appendChild(option);
+      }
+    }
+
+    function updateDateSelectors() {
+      monthSelect.value = currentDate.getMonth();
+      yearSelect.value = currentDate.getFullYear();
+    }
+
+    function handleGoToDate() {
+      const selectedMonth = parseInt(monthSelect.value);
+      const selectedYear = parseInt(yearSelect.value);
+      currentDate = new Date(selectedYear, selectedMonth, 1);
+      renderCalendar();
+    }
+
+    // Day Modal (Agendar)
+    function openDayModal(dateString) {
+      eventForm.reset();
+      resetTimeSelects();
+      const feedbackEl = document.getElementById('form-validation-feedback');
+      if (feedbackEl) feedbackEl.classList.add('hidden');
+
+      selectedDate = dateString;
+      const date = new Date(dateString + 'T00:00:00');
+      
+      const dayStr = String(date.getDate()).padStart(2,'0');
+      const monthStr = monthNames[date.getMonth()];
+      const yearStr = date.getFullYear();
+      modalTitle.innerHTML = `<ion-icon name="calendar" class="text-brand-secondary"></ion-icon> ${dayStr} de ${monthStr}, ${yearStr}`;
+
+      const chip = document.getElementById('selected-date-chip');
+      const chipText = document.getElementById('selected-date-chip-text');
+      if (chip && chipText) {
+        chip.classList.remove('hidden');
+        chipText.textContent = date.toLocaleDateString('pt-BR');
+      }
+
+      const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
+      adminRecurringSection.classList.toggle('hidden', !isUserAdmin);
+      recurringEventCheckbox.checked = false;
+      recurringOptions.classList.add('hidden');
+
+      updateEventList();
+      openModal(eventModal);
+    }
+
+    function closeDayModal() {
+      closeModal(eventModal);
+      setTimeout(() => { eventForm.reset(); resetTimeSelects(); }, 300);
+    }
+
+    function updateEventList() {
+      const dayEvents = allEvents.filter(event => event.date === selectedDate);
+      eventListEl.innerHTML = '';
+      if (dayEvents.length === 0) {
+        eventListEl.innerHTML = `
+          <div class="text-center py-10 bg-slate-800/30 rounded-2xl border border-dashed border-slate-700">
+            <ion-icon name="calendar-clear-outline" class="text-4xl text-slate-600 mb-2"></ion-icon>
+            <p class="text-sm font-medium text-slate-400">Nenhum evento agendado para hoje.</p>
+          </div>`;
+        return;
+      }
+
+      const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
+
+      dayEvents.sort((a, b) => (a.horarioInicio || "").localeCompare(b.horarioInicio || "")).forEach(event => {
+        const eventItem = document.createElement('div');
+        eventItem.className = 'bg-slate-800/60 backdrop-blur-sm p-4 rounded-2xl border border-slate-700/50 shadow-sm transition-all hover:border-slate-600';
+
+        const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : (event.horario || '--:--');
+
+        if (isUserAdmin) {
+          let statusBadge = event.status === 'aprovado'
+            ? '<span class="inline-flex items-center gap-1 text-xs font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-md border border-green-500/20"><ion-icon name="checkmark-circle"></ion-icon> Aprovado</span>'
+            : '<span class="inline-flex items-center gap-1 text-xs font-bold text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-md border border-yellow-500/20"><ion-icon name="time"></ion-icon> Pendente</span>';
+
+          let actionButtons = event.status === 'pendente' ? `
+            <div class="flex items-center gap-2 mt-4 pt-4 border-t border-slate-700/50">
+              <button onclick="window.approveEvent('${event.id}')" class="flex-1 bg-green-500/20 hover:bg-green-500 text-green-400 hover:text-white border border-green-500/30 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                <ion-icon name="checkmark"></ion-icon> Aprovar
+              </button>
+              <button onclick="window.rejectEvent('${event.id}')" class="flex-1 bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                <ion-icon name="close"></ion-icon> Recusar
+              </button>
+            </div>` : `
+            <div class="flex items-center justify-end mt-4 pt-4 border-t border-slate-700/50">
+              <button onclick="window.rejectEvent('${event.id}')" class="text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
+                <ion-icon name="trash"></ion-icon> Excluir
+              </button>
+            </div>`;
+
+          eventItem.innerHTML = `
+            <div class="flex justify-between items-start gap-3">
+              <div>
+                <p class="font-bold text-white text-base">${event.nome}</p>
+                <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                  <span class="text-xs font-medium text-slate-300 bg-slate-900/50 px-2 py-1 rounded border border-slate-700"><ion-icon name="time-outline" class="align-text-bottom"></ion-icon> ${timeDisplay}</span>
+                  <span class="text-xs font-medium text-blue-300 bg-blue-900/20 px-2 py-1 rounded border border-blue-800/50"><ion-icon name="location-outline" class="align-text-bottom"></ion-icon> ${event.espaco}</span>
+                </div>
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="text-xs text-slate-400 mt-3 space-y-1.5 bg-slate-900/30 p-3 rounded-xl border border-slate-700/30">
+              <p><strong class="text-slate-300">WhatsApp:</strong> ${event.whatsapp || '-'}</p>
+              <p><strong class="text-slate-300">Email:</strong> ${event.email || '-'}</p>
+              <p><strong class="text-slate-300">Ministério:</strong> ${event.ministerio || '-'}</p>
+              ${event.observacoes ? `<p><strong class="text-slate-300">Obs:</strong> ${event.observacoes}</p>` : ''}
+            </div>
+            ${actionButtons}`;
+        } else {
+          eventItem.innerHTML = `
+            <div class="flex items-center gap-4">
+              <div class="w-1.5 h-12 rounded-full ${event.status === 'aprovado' ? 'bg-green-500' : 'bg-yellow-500'}"></div>
+              <div>
+                <p class="font-bold text-white text-base">${event.nome || 'Reservado'}</p>
+                <p class="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                  <span class="flex items-center gap-1"><ion-icon name="time-outline"></ion-icon> ${timeDisplay}</span>
+                  <span class="flex items-center gap-1"><ion-icon name="location-outline"></ion-icon> ${event.espaco || 'Local não informado'}</span>
+                </p>
+              </div>
+            </div>`;
         }
+        eventListEl.appendChild(eventItem);
+      });
+    }
 
-        
-        window.approveEvent = async (eventId) => {
-            const eventRef = doc(db, "agendamentos", eventId);
-            try {
-                
-                const eventSnap = await getDoc(eventRef);
-                if (!eventSnap.exists()) {
-                    console.error("Agendamento não encontrado!");
-                    return;
-                }
-                const eventData = eventSnap.data();
+    // List Modal Logic
+    function renderListInModal(events, status) {
+      const filterInput = document.getElementById('list-modal-filter-input');
+      const futureEventsCheckbox = document.getElementById('future-events-filter-checkbox');
+      const monthFilterSelect = document.getElementById('month-filter-select');
+      const searchTerm = filterInput.value.toLowerCase().trim();
+      const showOnlyFuture = futureEventsCheckbox.checked;
+      const selectedMonth = monthFilterSelect.value;
+      const isApprovedList = status === 'aprovado';
 
-                
-                await updateDoc(eventRef, { status: "aprovado" });
+      let eventsToDisplay = [...events];
 
-                
-                
-                const webhookPayload = {
-                    date: eventData.date,
-                    nome: eventData.nome,
-                    telefone: eventData.whatsapp,
-                    email: eventData.email,
-                    responsavelEmail: eventData.responsavelEmail,
-                    ministerio_grupo: eventData.ministerio,
-                    espaco_desejado: eventData.espaco,
-                    horario_inicio: eventData.horarioInicio, 
-                    horario_fim: eventData.horarioFim,     
-                    observacoes: eventData.observacoes,
-                    status: 'aprovado' 
-                };
-
-                
-                const approvalWebhookUrl = 'https://hook.us2.make.com/f4fctnqn3kf58d5nrtfp8vuriiojfvm8'; 
-                
-                await fetch(approvalWebhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(webhookPayload)
-                });
-
-            } catch (error) {
-                console.error("Erro ao aprovar evento e enviar notificação: ", error);
-            }
-        };
-        
-        window.rejectEvent = async (eventId) => {
-            try {
-                await deleteDoc(doc(db, "agendamentos", eventId));
-            } catch (error) {
-                console.error("Erro ao rejeitar evento: ", error);
-            }
-        };
-
-        
-        const eventsCollection = collection(db, "agendamentos");
-
-        async function saveEventToDb(e) {
-            e.preventDefault();
-
-            
-            const feedbackEl = document.getElementById('form-validation-feedback');
-            const fieldsToValidate = [
-                { id: 'event-name', name: 'Nome' },
-                { id: 'event-whatsapp', name: 'WhatsApp' },
-                { id: 'event-email', name: 'Email', type: 'email' },
-                { id: 'event-responsavel', name: 'Email do Responsável', type: 'email' },
-                { id: 'event-ministerio', name: 'Ministério / Grupo' },
-                { id: 'event-espaco', name: 'Espaço Desejado' },
-                { id: 'event-horario-inicio', name: 'Horário de Início' },
-                { id: 'event-horario-fim', name: 'Horário de Término' }
-            ];
-            let errors = [];
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            
-            fieldsToValidate.forEach(fieldInfo => {
-                 const field = document.getElementById(fieldInfo.id);
-                 field.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
-                 field.classList.add('border-gray-600');
-            });
-            feedbackEl.innerHTML = '';
-            feedbackEl.classList.add('hidden');
-
-            
-            fieldsToValidate.forEach(fieldInfo => {
-                const field = document.getElementById(fieldInfo.id);
-                const value = field.value.trim();
-                
-                if (!value) {
-                    errors.push(`O campo "<strong>${fieldInfo.name}</strong>" é obrigatório.`);
-                    field.classList.add('border-red-500', 'ring-1', 'ring-red-500');
-                    field.classList.remove('border-gray-600');
-                } else if (fieldInfo.type === 'email' && !emailRegex.test(value)) {
-                    errors.push(`O "<strong>${fieldInfo.name}</strong>" não parece ser um email válido.`);
-                    field.classList.add('border-red-500', 'ring-1', 'ring-red-500');
-                    field.classList.remove('border-gray-600');
-                }
-            });
-            
-            const horarioInicio = document.getElementById('event-horario-inicio').value;
-            const horarioFim = document.getElementById('event-horario-fim').value;
-            if (horarioInicio && horarioFim && horarioInicio >= horarioFim) {
-                errors.push('O "<strong>Horário de Término</strong>" deve ser posterior ao "<strong>Horário de Início</strong>".');
-                document.getElementById('event-horario-inicio').classList.add('border-red-500', 'ring-1', 'ring-red-500');
-                document.getElementById('event-horario-fim').classList.add('border-red-500', 'ring-1', 'ring-red-500');
-            }
-
-            if (errors.length > 0) {
-                feedbackEl.innerHTML = errors.join('<br>');
-                feedbackEl.classList.remove('hidden');
-                return; 
-            }
-
-            const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
-            const isRecurring = recurringEventCheckbox.checked && isUserAdmin;
-
-            const eventDataTemplate = {
-                nome: document.getElementById('event-name').value.trim(),
-                whatsapp: document.getElementById('event-whatsapp').value,
-                email: document.getElementById('event-email').value,
-                responsavelEmail: document.getElementById('event-responsavel').value,
-                ministerio: document.getElementById('event-ministerio').value,
-                espaco: espacoSelect.value,
-                horarioInicio: horarioInicio,
-                horarioFim: horarioFim,
-                observacoes: document.getElementById('event-observacoes').value,
-                createdAt: new Date().toISOString(),
-                status: 'pendente'
-            };
-            
-            if (isRecurring) {
-                const recurringEndDateValue = document.getElementById('recurring-end-date').value;
-                const selectedDaysCheckboxes = document.querySelectorAll('.recurring-day-checkbox:checked');
-                const recurringDays = Array.from(selectedDaysCheckboxes).map(cb => parseInt(cb.value));
-
-                if (recurringDays.length === 0) {
-                    feedbackEl.innerHTML = "Por favor, selecione pelo menos um dia da semana para a recorrência.";
-                    feedbackEl.classList.remove('hidden');
-                    return;
-                }
-
-                if (!recurringEndDateValue) {
-                    feedbackEl.innerHTML = "Por favor, selecione uma data final para a recorrência.";
-                    feedbackEl.classList.remove('hidden');
-                    return;
-                }
-                
-                const startDate = new Date(selectedDate + 'T00:00:00');
-                const endDate = new Date(recurringEndDateValue + 'T00:00:00');
-
-                if (endDate < startDate) {
-                    feedbackEl.innerHTML = "A data final da recorrência não pode ser anterior à data de início da solicitação.";
-                    feedbackEl.classList.remove('hidden');
-                    return;
-                }
-
-                let datesToCreate = [];
-                let loopDate = new Date(startDate);
-                while (loopDate <= endDate) {
-                    if (recurringDays.includes(loopDate.getDay())) {
-                        datesToCreate.push(loopDate.toISOString().split('T')[0]);
-                    }
-                    loopDate.setDate(loopDate.getDate() + 1);
-                }
-
-                if (datesToCreate.length === 0) {
-                    feedbackEl.innerHTML = `Nenhuma data correspondente aos dias da semana selecionados foi encontrada no período.`;
-                    feedbackEl.classList.remove('hidden');
-                    return;
-                }
-
-                for (const dateString of datesToCreate) {
-                    const hasConflict = allEvents.some(event => {
-                        if (event.date === dateString && event.espaco === eventDataTemplate.espaco) {
-                            const existingStartTime = event.horarioInicio;
-                            const existingEndTime = event.horarioFim;
-                            if (!existingStartTime || !existingEndTime) return false;
-                            return eventDataTemplate.horarioInicio < existingEndTime && eventDataTemplate.horarioFim > existingStartTime;
-                        }
-                        return false;
-                    });
-                    if (hasConflict) {
-                        feedbackEl.innerHTML = `Conflito de agendamento encontrado para a data ${new Date(dateString+'T00:00:00').toLocaleDateString('pt-BR')}. Nenhuma solicitação foi criada.`;
-                        feedbackEl.classList.remove('hidden');
-                        return;
-                    }
-                }
-
-                try {
-                    const creationPromises = datesToCreate.map(dateString => {
-                        const eventData = { ...eventDataTemplate, date: dateString };
-                        return addDoc(eventsCollection, eventData);
-                    });
-                    await Promise.all(creationPromises);
-                    
-                    // Enviar webhook para cada evento criado
-                    const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
-                    const webhookPromises = datesToCreate.map(dateString => {
-                         const webhookPayload = {
-                            date: dateString,
-                            nome: eventDataTemplate.nome,
-                            telefone: eventDataTemplate.whatsapp,
-                            email: eventDataTemplate.email,
-                            ministerio_grupo: eventDataTemplate.ministerio,
-                            espaco_desejado: eventDataTemplate.espaco,
-                            horario_inicio: eventDataTemplate.horarioInicio, 
-                            horario_fim: eventDataTemplate.horarioFim,     
-                            observacoes: eventDataTemplate.observacoes,
-                            status: eventDataTemplate.status
-                        };
-                        return fetch(webhookUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(webhookPayload)
-                        });
-                    });
-                    await Promise.all(webhookPromises);
-
-                    closeDayModal();
-                } catch (error) {
-                    console.error("Erro ao salvar ou notificar eventos recorrentes: ", error);
-                    feedbackEl.innerHTML = "Ocorreu um erro ao salvar ou notificar os eventos recorrentes. Tente novamente.";
-                    feedbackEl.classList.remove('hidden');
-                }
-
-            } else {
-                const hasConflict = allEvents.some(event => {
-                    if (event.date === selectedDate && event.espaco === eventDataTemplate.espaco) {
-                        const existingStartTime = event.horarioInicio;
-                        const existingEndTime = event.horarioFim;
-                        if (!existingStartTime || !existingEndTime) return false; 
-                        return eventDataTemplate.horarioInicio < existingEndTime && eventDataTemplate.horarioFim > existingStartTime;
-                    }
-                    return false;
-                });
-                
-                if (hasConflict) {
-                    feedbackEl.innerHTML = "Conflito de agendamento! Este espaço já está reservado ou solicitado para um horário que se sobrepõe ao seu.";
-                    feedbackEl.classList.remove('hidden');
-                    return;
-                }
-
-                try {
-                    const fullEventData = { ...eventDataTemplate, date: selectedDate };
-                    await addDoc(eventsCollection, fullEventData);
-                    
-                    const webhookPayload = {
-                        date: fullEventData.date,
-                        nome: fullEventData.nome,
-                        telefone: fullEventData.whatsapp,
-                        email: fullEventData.email,
-                        ministerio_grupo: fullEventData.ministerio,
-                        espaco_desejado: fullEventData.espaco,
-                        horario_inicio: fullEventData.horarioInicio, 
-                        horario_fim: fullEventData.horarioFim,     
-                        observacoes: fullEventData.observacoes,
-                        status: fullEventData.status
-                    };
-
-                    const webhookUrl = 'https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4';
-                    await fetch(webhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(webhookPayload)
-                    });
-                    closeDayModal();
-                } catch (error) {
-                    console.error("Erro ao salvar solicitação: ", error);
-                    feedbackEl.innerHTML = "Ocorreu um erro ao salvar a solicitação. Tente novamente.";
-                    feedbackEl.classList.remove('hidden');
-                }
-            }
+      if (isApprovedList) {
+        if (selectedMonth) eventsToDisplay = eventsToDisplay.filter(event => event.date.startsWith(selectedMonth));
+        if (showOnlyFuture) {
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          eventsToDisplay = eventsToDisplay.filter(event => new Date(event.date + 'T00:00:00') >= today);
         }
-
-        function listenToEvents() {
-            
-            eventsListenerUnsubscribe = onSnapshot(query(eventsCollection), (snapshot) => {
-                allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                const approvedEvents = allEvents.filter(e => e.status === 'aprovado');
-                const pendingEvents = allEvents.filter(e => e.status === 'pendente');
-                let usedSpaces = new Set(approvedEvents.map(e => e.espaco));
-
-                approvedEventsCountEl.textContent = approvedEvents.length;
-                pendingEventsCountEl.textContent = pendingEvents.length;
-                spacesCountEl.textContent = usedSpaces.size;
-                
-                renderCalendar();
-                
-                if (!eventModal.classList.contains('hidden')) {
-                    updateEventList();
-                }
-
-                
-                if (!listModal.classList.contains('hidden')) {
-                    const currentTitle = listModalTitle.textContent;
-                    if (currentTitle === 'Eventos Pendentes') {
-                        showEventListInModal('pendente');
-                    } else if (currentTitle === 'Eventos Aprovados') {
-                        showEventListInModal('aprovado');
-                    }
-                }
-            });
+        if (searchTerm) {
+          eventsToDisplay = eventsToDisplay.filter(event => {
+            const date = new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR');
+            return (event.nome?.toLowerCase() || '').includes(searchTerm) || (event.espaco?.toLowerCase() || '').includes(searchTerm) || date.includes(searchTerm);
+          });
         }
+      }
 
-        
-        prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); updateDateSelectors(); });
-        nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); updateDateSelectors(); });
-        todayBtn.addEventListener('click', () => {
-            currentDate = new Date();
-            renderCalendar();
-            updateDateSelectors();
-        });
-        
-        closeModalBtn.addEventListener('click', closeDayModal);
-        eventForm.addEventListener('submit', saveEventToDb);
-        eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeDayModal(); });
-        
-        approvedCard.addEventListener('click', () => {
-            if (currentUser && adminUIDs.includes(currentUser.uid)) {
-                showEventListInModal('aprovado');
-            }
-        });
-        pendingCard.addEventListener('click', () => {
-            if (currentUser && adminUIDs.includes(currentUser.uid)) {
-                showEventListInModal('pendente');
-            }
-        });
-        spacesCard.addEventListener('click', () => {
-            if (currentUser && adminUIDs.includes(currentUser.uid)) {
-                showUsedSpacesInModal();
-            }
-        });
-        closeListModalBtn.addEventListener('click', closeListModal);
-        listModal.addEventListener('click', (e) => { if (e.target === listModal) closeListModal(); });
+      listModalContent.innerHTML = '';
+      if (eventsToDisplay.length === 0) {
+        listModalContent.innerHTML = `<div class="text-center py-10"><p class="text-sm text-slate-500 font-medium">Nenhum evento encontrado.</p></div>`;
+      } else {
+        listModalContent.innerHTML = eventsToDisplay.map(event => {
+          const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
+          const actionButtons = status === 'pendente' ? `
+            <div class="flex items-center gap-2 mt-4 pt-4 border-t border-slate-700/50">
+              <button onclick="window.approveEvent('${event.id}')" class="flex-1 bg-green-500/20 hover:bg-green-500 text-green-400 hover:text-white border border-green-500/30 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"><ion-icon name="checkmark"></ion-icon> Aprovar</button>
+              <button onclick="window.rejectEvent('${event.id}')" class="flex-1 bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"><ion-icon name="close"></ion-icon> Recusar</button>
+            </div>` : `
+            <div class="flex items-center justify-end mt-4 pt-4 border-t border-slate-700/50">
+              <button onclick="window.rejectEvent('${event.id}')" class="text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"><ion-icon name="trash"></ion-icon> Excluir</button>
+            </div>`;
 
-        toggleDateSelectorBtn.addEventListener('click', () => {
-            dateSelectorContainer.classList.toggle('open');
-            
-            toggleDateSelectorBtn.querySelector('svg').classList.toggle('rotate-180');
-        });
-        goToDateBtn.addEventListener('click', () => {
-            handleGoToDate();
-            dateSelectorContainer.classList.remove('open');
-            toggleDateSelectorBtn.querySelector('svg').classList.remove('rotate-180');
-        });
+          return `
+            <div class="bg-slate-800/60 p-5 rounded-2xl border border-slate-700/50 transition-all hover:border-slate-600">
+              <div class="flex justify-between items-start gap-3">
+                <div>
+                  <p class="font-bold text-white text-base">${event.nome}</p>
+                  <p class="text-xs font-medium text-brand-secondary mt-1 tracking-wide uppercase">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                </div>
+                <div class="text-right">
+                   <p class="text-sm font-medium text-slate-300 bg-slate-900/50 px-2 py-1 rounded border border-slate-700 inline-block">${timeDisplay}</p>
+                   <p class="text-xs font-medium text-slate-400 mt-1">${event.espaco}</p>
+                </div>
+              </div>
+              <div class="text-xs text-slate-400 mt-4 space-y-1.5">
+                <p><strong class="text-slate-300">WhatsApp:</strong> ${event.whatsapp || '-'}</p>
+                <p><strong class="text-slate-300">Ministério:</strong> ${event.ministerio || '-'}</p>
+              </div>
+              ${actionButtons}
+            </div>`;
+        }).join('');
+      }
+    }
 
-        recurringEventCheckbox.addEventListener('change', () => {
-            recurringOptions.classList.toggle('hidden', !recurringEventCheckbox.checked);
-        });
+    function showEventListInModal(status) {
+      const isApprovedList = status === 'aprovado';
+      listModalTitle.innerHTML = isApprovedList ? '<ion-icon name="checkmark-circle" class="text-green-400"></ion-icon> Eventos Aprovados' : '<ion-icon name="time" class="text-yellow-400"></ion-icon> Eventos Pendentes';
 
-        
-        populateDateSelectors();
-        updateDateSelectors();
-        
-    </script>
+      const filterContainer = document.getElementById('list-modal-filter-container');
+      const filterInput = document.getElementById('list-modal-filter-input');
+      const futureEventsCheckbox = document.getElementById('future-events-filter-checkbox');
+      const monthFilterSelect = document.getElementById('month-filter-select');
+
+      const baseEventList = allEvents.filter(event => event.status === status).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (isApprovedList) {
+        filterContainer.classList.remove('hidden');
+        filterInput.value = ''; futureEventsCheckbox.checked = false;
+        const uniqueMonths = [...new Set(baseEventList.map(event => event.date.substring(0, 7)))];
+        monthFilterSelect.innerHTML = '<option value="">Todos os meses</option>';
+        uniqueMonths.forEach(monthYear => {
+          const [year, month] = monthYear.split('-');
+          const monthName = monthNames[parseInt(month) - 1];
+          const option = document.createElement('option');
+          option.value = monthYear; option.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${year}`;
+          monthFilterSelect.appendChild(option);
+        });
+        monthFilterSelect.value = '';
+
+        const rerender = () => renderListInModal(baseEventList, 'aprovado');
+        filterInput.onkeyup = rerender; futureEventsCheckbox.onchange = rerender; monthFilterSelect.onchange = rerender;
+      } else {
+        filterContainer.classList.add('hidden');
+      }
+
+      renderListInModal(baseEventList, status);
+      openModal(listModal);
+    }
+
+    function showUsedSpacesInModal() {
+      listModalTitle.innerHTML = '<ion-icon name="business" class="text-blue-400"></ion-icon> Espaços em Uso';
+      const approvedEvents = allEvents.filter(e => e.status === 'aprovado');
+      listModalContent.innerHTML = '';
+      
+      document.getElementById('list-modal-filter-container').classList.add('hidden');
+
+      if (approvedEvents.length === 0) {
+        listModalContent.innerHTML = '<div class="text-center py-10 text-sm text-slate-500 font-medium">Nenhum espaço sendo utilizado.</div>';
+      } else {
+        listModalContent.innerHTML = approvedEvents.map(event => {
+          const timeDisplay = (event.horarioInicio && event.horarioFim) ? `${event.horarioInicio} - ${event.horarioFim}` : event.horario;
+          return `
+            <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50 flex items-center justify-between">
+              <div>
+                <p class="font-bold text-blue-400 text-base">${event.espaco}</p>
+                <p class="text-xs text-slate-400 mt-1">Reservado por <strong class="text-white">${event.nome}</strong></p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs font-bold text-slate-300 uppercase">${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                <p class="text-xs font-medium text-slate-500 mt-1">${timeDisplay}</p>
+              </div>
+            </div>`;
+        }).join('');
+      }
+      openModal(listModal);
+    }
+
+    window.approveEvent = async (eventId) => {
+      const eventRef = doc(db, "agendamentos", eventId);
+      try {
+        const eventSnap = await getDoc(eventRef);
+        if (!eventSnap.exists()) return;
+        const eventData = eventSnap.data();
+        await updateDoc(eventRef, { status: "aprovado" });
+
+        const webhookPayload = { ...eventData, status: 'aprovado' };
+        await fetch('https://hook.us2.make.com/f4fctnqn3kf58d5nrtfp8vuriiojfvm8', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(webhookPayload)
+        });
+      } catch (error) { console.error("Erro ao aprovar:", error); }
+    };
+
+    window.rejectEvent = async (eventId) => {
+      try { await deleteDoc(doc(db, "agendamentos", eventId)); } 
+      catch (error) { console.error("Erro ao recusar:", error); }
+    };
+
+    const eventsCollection = collection(db, "agendamentos");
+
+    function markTimeSelectsError(isError) {
+      [startHourEl, startMinuteEl, endHourEl, endMinuteEl].forEach(el => {
+        if (!el) return;
+        el.classList.toggle('ring-1', isError); el.classList.toggle('ring-red-500', isError); el.classList.toggle('border-red-500', isError);
+      });
+    }
+
+    async function saveEventToDb(e) {
+      e.preventDefault();
+      setHiddenTimeFromSelects();
+
+      const feedbackEl = document.getElementById('form-validation-feedback');
+      const feedbackContent = feedbackEl.querySelector('.feedback-content');
+      const fieldsToValidate = [
+        { id: 'event-name', name: 'Nome Completo' }, { id: 'event-whatsapp', name: 'WhatsApp' },
+        { id: 'event-email', name: 'Email', type: 'email' }, { id: 'event-responsavel', name: 'Resp. (Email)', type: 'email' },
+        { id: 'event-ministerio', name: 'Ministério / Grupo' }, { id: 'event-espaco', name: 'Espaço Desejado' }
+      ];
+      let errors = [];
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      fieldsToValidate.forEach(f => document.getElementById(f.id)?.classList.remove('border-red-500', 'ring-1', 'ring-red-500'));
+      markTimeSelectsError(false);
+      feedbackEl.classList.add('hidden');
+
+      fieldsToValidate.forEach(fieldInfo => {
+        const field = document.getElementById(fieldInfo.id);
+        const value = field.value.trim();
+        if (!value) {
+          errors.push(`O campo "<strong>${fieldInfo.name}</strong>" é obrigatório.`);
+          field.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+        } else if (fieldInfo.type === 'email' && !emailRegex.test(value)) {
+          errors.push(`"<strong>${fieldInfo.name}</strong>" inválido.`);
+          field.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+        }
+      });
+
+      const horarioInicio = hiddenStartTimeEl.value;
+      const horarioFim = hiddenEndTimeEl.value;
+
+      if (!horarioInicio || !horarioFim) {
+        errors.push(`Preencha o <strong>Horário de Início e Fim</strong>.`);
+        markTimeSelectsError(true);
+      } else if (horarioInicio >= horarioFim) {
+        errors.push('<strong>Horário de Fim</strong> deve ser posterior ao <strong>Início</strong>.');
+        markTimeSelectsError(true);
+      }
+
+      if (errors.length > 0) {
+        feedbackContent.innerHTML = errors.join('<br>');
+        feedbackEl.classList.remove('hidden');
+        return;
+      }
+
+      const isUserAdmin = currentUser && adminUIDs.includes(currentUser.uid);
+      const isRecurring = recurringEventCheckbox.checked && isUserAdmin;
+
+      const eventDataTemplate = {
+        nome: document.getElementById('event-name').value.trim(),
+        whatsapp: document.getElementById('event-whatsapp').value,
+        email: document.getElementById('event-email').value,
+        responsavelEmail: document.getElementById('event-responsavel').value,
+        ministerio: document.getElementById('event-ministerio').value,
+        espaco: espacoSelect.value,
+        horarioInicio: horarioInicio,
+        horarioFim: horarioFim,
+        observacoes: document.getElementById('event-observacoes').value,
+        createdAt: new Date().toISOString(),
+        status: 'pendente'
+      };
+
+      const saveBtn = document.getElementById('save-event-btn');
+      const originalBtnText = saveBtn.innerHTML;
+      saveBtn.innerHTML = `<ion-icon name="refresh" class="animate-spin"></ion-icon> Processando...`;
+      saveBtn.disabled = true;
+
+      try {
+        if (isRecurring) {
+          const recurringEndDateValue = document.getElementById('recurring-end-date').value;
+          const selectedDaysCheckboxes = document.querySelectorAll('.recurring-day-checkbox:checked');
+          const recurringDays = Array.from(selectedDaysCheckboxes).map(cb => parseInt(cb.value));
+
+          if (recurringDays.length === 0 || !recurringEndDateValue) {
+             throw new Error("Para recorrência, selecione uma data final e os dias da semana.");
+          }
+
+          const startDate = new Date(selectedDate + 'T00:00:00');
+          const endDate = new Date(recurringEndDateValue + 'T00:00:00');
+          if (endDate < startDate) throw new Error("A data final não pode ser no passado.");
+
+          let datesToCreate = [];
+          let loopDate = new Date(startDate);
+          while (loopDate <= endDate) {
+            if (recurringDays.includes(loopDate.getDay())) datesToCreate.push(loopDate.toISOString().split('T')[0]);
+            loopDate.setDate(loopDate.getDate() + 1);
+          }
+          if (datesToCreate.length === 0) throw new Error("Nenhuma data encontrada para esses dias.");
+
+          for (const dateString of datesToCreate) {
+            const conflict = allEvents.some(ev => ev.date === dateString && ev.espaco === eventDataTemplate.espaco && ev.horarioInicio < eventDataTemplate.horarioFim && ev.horarioFim > eventDataTemplate.horarioInicio);
+            if (conflict) throw new Error(`Conflito de agendamento em ${new Date(dateString+'T00:00:00').toLocaleDateString('pt-BR')}.`);
+          }
+
+          const creationPromises = datesToCreate.map(dateString => addDoc(eventsCollection, { ...eventDataTemplate, date: dateString }));
+          await Promise.all(creationPromises);
+          
+          const webhookPromises = datesToCreate.map(dateString => fetch('https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...eventDataTemplate, date: dateString}) }));
+          await Promise.all(webhookPromises);
+
+        } else {
+          const conflict = allEvents.some(ev => ev.date === selectedDate && ev.espaco === eventDataTemplate.espaco && ev.horarioInicio < eventDataTemplate.horarioFim && ev.horarioFim > eventDataTemplate.horarioInicio);
+          if (conflict) throw new Error("Conflito de agendamento! Este espaço já está reservado nesse horário.");
+
+          const fullEventData = { ...eventDataTemplate, date: selectedDate };
+          await addDoc(eventsCollection, fullEventData);
+          await fetch('https://hook.us2.make.com/4fb6nw8p7san94w7kuv1x7tzxrqcomt4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fullEventData) });
+        }
+        closeDayModal();
+      } catch (error) {
+        feedbackContent.innerHTML = error.message || "Ocorreu um erro ao salvar a solicitação. Tente novamente.";
+        feedbackEl.classList.remove('hidden');
+      } finally {
+        saveBtn.innerHTML = originalBtnText;
+        saveBtn.disabled = false;
+      }
+    }
+
+    function listenToEvents() {
+      eventsListenerUnsubscribe = onSnapshot(query(eventsCollection), (snapshot) => {
+        allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        const approvedEvents = allEvents.filter(e => e.status === 'aprovado');
+        const pendingEvents = allEvents.filter(e => e.status === 'pendente');
+        const usedSpaces = new Set(approvedEvents.map(e => e.espaco));
+
+        approvedEventsCountEl.textContent = approvedEvents.length;
+        pendingEventsCountEl.textContent = pendingEvents.length;
+        spacesCountEl.textContent = usedSpaces.size;
+
+        renderCalendar();
+        if (!eventModal.classList.contains('hidden')) updateEventList();
+        if (!listModal.classList.contains('hidden')) {
+          const currentTitle = listModalTitle.textContent;
+          if (currentTitle.includes('Pendentes')) showEventListInModal('pendente');
+          else if (currentTitle.includes('Aprovados')) showEventListInModal('aprovado');
+          else if (currentTitle.includes('Espaços')) showUsedSpacesInModal();
+        }
+      });
+    }
+
+    // Interações
+    approvedCard.addEventListener('click', () => { if (currentUser && adminUIDs.includes(currentUser.uid)) showEventListInModal('aprovado'); });
+    pendingCard.addEventListener('click', () => { if (currentUser && adminUIDs.includes(currentUser.uid)) showEventListInModal('pendente'); });
+    spacesCard.addEventListener('click', () => { if (currentUser && adminUIDs.includes(currentUser.uid)) showUsedSpacesInModal(); });
+
+    prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); updateDateSelectors(); });
+    nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); updateDateSelectors(); });
+    todayBtn.addEventListener('click', () => { currentDate = new Date(); renderCalendar(); updateDateSelectors(); });
+
+    closeModalBtn.addEventListener('click', closeDayModal);
+    eventForm.addEventListener('submit', saveEventToDb);
+    eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeDayModal(); });
+
+    closeListModalBtn.addEventListener('click', () => closeModal(listModal));
+    listModal.addEventListener('click', (e) => { if (e.target === listModal) closeModal(listModal); });
+
+    toggleDateSelectorBtn.addEventListener('click', () => {
+      dateSelectorContainer.classList.toggle('open');
+      toggleDateSelectorBtn.querySelector('ion-icon').classList.toggle('rotate-180');
+    });
+    goToDateBtn.addEventListener('click', () => {
+      handleGoToDate();
+      dateSelectorContainer.classList.remove('open');
+      toggleDateSelectorBtn.querySelector('ion-icon').classList.remove('rotate-180');
+    });
+
+    recurringEventCheckbox.addEventListener('change', () => {
+      recurringOptions.classList.toggle('hidden', !recurringEventCheckbox.checked);
+    });
+
+    populateDateSelectors();
+    updateDateSelectors();
+  </script>
 </body>
 </html>
